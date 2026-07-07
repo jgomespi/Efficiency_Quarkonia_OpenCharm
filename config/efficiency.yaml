@@ -1,14 +1,18 @@
 dimu_mass_low: 2.95
 dimu_mass_high: 3.25
-bins_pt_dimu: [25, 30, 50, 70, 100]
 
-bins_rap_dimu: [0.0, 0.9, 1.2]
-#bins_pt_dimu: [25, 100]
-#bins_rap_dimu: [0.0, 1.2]
-bins_pt_dstar: [4, 10, 20, 30, 60]
-#bins_rap_dstar: [0.0, 2.1]
-#bins_pt_dstar: [4, 60]
-bins_rap_dstar: [0.0, 0.9, 1.2, 2.1]
+#bins_pt_dimu: [25, 30, 50, 70, 100]
+#bins_rap_dimu: [0.0, 0.9, 1.2]
+
+bins_pt_dimu: [25, 100]
+bins_rap_dimu: [0.0, 1.2]
+
+#bins_pt_dstar: [4, 10, 20, 30, 60]
+#bins_rap_dstar: [0.0, 0.9, 1.2, 2.1]
+
+bins_pt_dstar: [4, 60]
+bins_rap_dstar: [0.0, 2.1]
+
 #bins_pt_dimu: [20, 30, 50, 70, 100, 130]
 #bins_rap_dimu: [0.0, 0.5, 1.2]
 #bins_pt_dstar: [4, 10, 20, 30, 50, 70, 100]
@@ -59,6 +63,6 @@ corrections:
     "2018":    "data/corrections/Efficiency_muon_trackerMuon_Run2018_UL_ID.json"
 
 # Output file name
-mc_type: "DPS-ccbar" #options: DPS-ccbar,  DPS-bbbar
-out_name: "pt_bin" #names: pt_bin, eta_bin, , fiducial;
+mc_type: "DPS-ccbar" #options: DPS-ccbar,  DPS-bbbar, SPS-ccbar
+out_name: "fiducial" #names: pt_bin, eta_bin, , fiducial;
 category: "jpsi" # name to save figures: "jpsi", "dstar"
