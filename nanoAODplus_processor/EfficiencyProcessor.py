@@ -2,6 +2,8 @@ import awkward as ak
 import numpy as np
 import coffea.processor as processor
 from coffea.lookup_tools import extractor
+import json
+import correctionlib
 
 from hist import Hist
 import hist
@@ -13,13 +15,18 @@ from tools.collections import *
 from tools.utils import D0_PDG_MASS, remove_none, association
 
 pileup_file = '/afs/cern.ch/work/m/mabarros/public/CMSSW_10_6_12/src/analysis_monte_carlo/efficiencies_per_evt/data/corrections/pile_up_reweight_{year}.root'
+#pileup_file_new = '/afs/cern.ch/work/m/mabarros/public/CMSSW_10_6_12/src/analysis_monte_carlo/efficiencies_per_evt/data/corrections/puWeights_{year}_UL.json'
 muon_reco_file = '/afs/cern.ch/work/m/mabarros/public/CMSSW_10_6_12/src/analysis_monte_carlo/efficiencies_per_evt/data/corrections/Efficiency_muon_generalTracks_Run{year}_UL_trackerMuon.json'
 muon_id_file = '/afs/cern.ch/work/m/mabarros/public/CMSSW_10_6_12/src/analysis_monte_carlo/efficiencies_per_evt/data/corrections/Efficiency_muon_trackerMuon_Run{year}_UL_ID.json'
 
+import awkward as ak
+import numpy as np
+
+
 def get_weight(evaluator, Muon, Dimu, PVtx):
+    
     pileup_weight = evaluator['weight_histogram'](ak.num(PVtx))[ak.num(Dimu)>0] # Kevin's: pileup_weight = evaluator['pileup'](ak.num(PVtx))[ak.num(Dimu)>0]
     muon = Muon[ak.num(Dimu)>0]
-    #dimu = Dimu[ak.num(Dimu)>0]
     mu0_reco_weight = evaluator['NUM_TrackerMuons_DEN_genTracks/abseta_pt_value'](np.absolute(muon.slot0.eta[:,0]), muon.slot0.pt[:,0])
     mu1_reco_weight = evaluator['NUM_TrackerMuons_DEN_genTracks/abseta_pt_value'](np.absolute(muon.slot1.eta[:,0]), muon.slot1.pt[:,0])
     mu0_id_weight = evaluator['NUM_SoftID_DEN_TrackerMuons/abseta_pt_value'](np.absolute(muon.slot0.eta[:,0]), muon.slot0.pt[:,0])
@@ -31,6 +38,7 @@ def get_weight(evaluator, Muon, Dimu, PVtx):
         print(weight[idx], pileup_weight[idx], mu0_reco_weight[idx], mu1_reco_weight[idx], mu0_id_weight[idx], mu0_id_weight[idx]) """
     
     return weight
+
 
 class EfficiencyProcessor(processor.ProcessorABC):
     def __init__(self, config, year, dimu_cut=0):
@@ -105,7 +113,6 @@ class EfficiencyProcessor(processor.ProcessorABC):
             .Weight()
         )
                
-
         self._accumulator = {
             'Gen_Dimu': Gen_Dimu,
             'Reco_Dimu': Reco_Dimu,
@@ -150,12 +157,22 @@ class EfficiencyProcessor(processor.ProcessorABC):
 
         # Corrections for Muon and Pileup
         ext = extractor()
-        ext.add_weight_sets([f"weight_histogram weight_histogram {pileup_file.format(year=self.year)}"]) # Weight name in Kevin's code: ext.add_weight_sets([f"pileup h_weights {pileup_file.format(year=self.year)}"]) 
+        ext.add_weight_sets([f"weight_histogram weight_histogram {pileup_file.format(year=self.year)}"]) # Weight name in Kevin's code: ext.add_weight_sets([f"pileup h_weights {pileup_file.format(year=self.year)}"])     
+        # Adds muon ID anc RECO corrections
         ext.add_weight_sets([f"* * {muon_reco_file.format(year=self.year)}"])
         ext.add_weight_sets([f"* * {muon_id_file.format(year=self.year)}"])
         ext.finalize()
         evaluator = ext.make_evaluator()
 
+        # Pile-up correction from json files
+        """ pileup_corrector = correctionlib.CorrectionSet.from_file(pileup_file_new.format(year=self.year))
+        if self.year == '2016APV' or self.year == '2016':
+            pileup_correction = pileup_corrector["Collisions16_UltraLegacy_goldenJSON"]
+        elif self.year == '2017':
+            pileup_correction = pileup_corrector["Collisions17_UltraLegacy_goldenJSON"]
+        elif self.year == '2018':
+            pileup_correction = pileup_corrector["Collisions18_UltraLegacy_goldenJSON"] """
+            
         ############### Acceptance
 
         if self.config['particle'] == 'J/psi':
@@ -201,30 +218,10 @@ class EfficiencyProcessor(processor.ProcessorABC):
         Dimu = ak.mask(Dimu, muon_eta_cut & muon_pt_cut & muon_sim_cut & dimu_pt_cut & dimu_eta_cut)
         arg_sort = ak.argsort(Dimu.pt, axis=1, ascending=False)
 
-        #print(f'argsort len: {len(arg_sort)}')  
-        #print(f'argsort: {arg_sort}')
-        #for i in arg_sort:
-        #    print(i)
-        
-        
-        #print(f'Dimu: {Dimu}')
-        #print(f'Dimu len: {len(Dimu)}')
-        
-
-
         Dimu = Dimu[arg_sort]
         Muon = Muon[arg_sort]
-        #muon_sim_cut_2 = (GenPart[Muon.slot0.simIdx] == GenPart_Muon.slot0) & (GenPart[Muon.slot1.simIdx] == GenPart_Muon.slot1)
-        """ Muon0 = ak.cartesian([GenPart[Muon.slot0.simIdx], GenPart_Muon.slot0])
-        Muon1 = ak.cartesian([GenPart[Muon.slot1.simIdx], GenPart_Muon.slot1])
-        muon_sim_cut = ak.any(Muon0.slot0 == Muon0.slot1, axis=1) & ak.any(Muon1.slot0 == Muon1.slot1, axis=1)
-        Muon = ak.mask(Muon, muon_sim_cut)
-        Dimu = ak.mask(Dimu, muon_sim_cut)
-        print(Dimu.pt) """
-        
-        #Muon = ak.mask(Muon, muon_sim_cut_2)
-        #Dimu = ak.mask(Dimu, muon_sim_cut_2)
 
+        # Dstar cuts
         Dstar = Dstar[~Dstar.hasMuon]
         Dstar = Dstar[Dstar.Kchg != Dstar.pichg]
         Dstar = Dstar[(Dstar.pt > self.config['dstar_pt_min']) & (Dstar.pt < self.config['dstar_pt_max'])]
@@ -237,8 +234,9 @@ class EfficiencyProcessor(processor.ProcessorABC):
         Dimu_aux = Dimu[remove_none(Dimu.pt)]
         Muon_aux = Muon[remove_none(Dimu.pt)]
 
+        # Pile-up and muon ID/RECO corrections
         dimu_weight = get_weight(evaluator, Muon_aux, Dimu_aux, PVtx)
-        dstar_weight = evaluator['weight_histogram'](ak.num(PVtx))[ak.num(Dstar_sim)>0] # Kevin's: dstar_weight = evaluator['pileup'](ak.num(PVtx))[ak.num(Dstar_sim)>0]
+        dstar_weight = evaluator['weight_histogram'](ak.num(PVtx))[ak.num(Dstar_sim)>0]
 
         output['Gen_Dimu'].fill(
             pt=GenPart_Dimu[ak.num(GenPart_Dimu)>0].pt[:,0], 
@@ -288,6 +286,7 @@ class EfficiencyProcessor(processor.ProcessorABC):
         Dimu_aux = Dimu[remove_none(Dimu.pt)]
         Muon_aux = Muon[remove_none(Dimu.pt)]
 
+        # Pile-up and muon ID/RECO corrections
         dimu_weight = get_weight(evaluator, Muon_aux, Dimu_aux, PVtx)
         dstar_weight = evaluator['weight_histogram'](ak.num(PVtx))[ak.num(Dstar)>0]
 
@@ -360,10 +359,6 @@ class EfficiencyProcessor(processor.ProcessorABC):
             rap_dstar=DimuDstar[ak.num(DimuDstar)>0].slot1.rap[:,0],
             weight=weight,
         )
-
-        #output['Num_Evts'].fill(num_events=len(events))
-
-       
 
         ############### /Association Efficiency
 
