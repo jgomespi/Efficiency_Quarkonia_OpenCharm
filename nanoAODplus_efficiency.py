@@ -26,11 +26,21 @@ from tools.utils import *
 from tools.collections import *
 from tools.figure import create_plot2d
 
+#python nanoAODplus_efficiency.py -y {year} -p
+
+with open('config/efficiency.yaml', 'r') as f:
+    config = yaml.load(f, Loader=yaml.FullLoader)
+
+if config['mc_type'] == 'DPS-ccbar':
+    mc_v = 'dps_official'
+elif config['mc_type'] == 'SPS-ccbar':
+    mc_v = 'sps_official'
+
 years = ['2016APV', '2016', '2017', '2018']
 ps = [
-    '/eos/user/m/mabarros/Monte_Carlo/dps_official/ccbar/JpsiPt9To30ToMuMuDstarToD0pi',
-    '/eos/user/m/mabarros/Monte_Carlo/dps_official/ccbar/JpsiPt30To50ToMuMuDstarToD0pi',
-    '/eos/user/m/mabarros/Monte_Carlo/dps_official/ccbar/JpsiPt50To100ToMuMuDstarToD0pi',
+    '/eos/user/m/mabarros/Monte_Carlo/' + mc_v +  '/ccbar/JpsiPt9To30ToMuMuDstarToD0pi',
+    '/eos/user/m/mabarros/Monte_Carlo/' + mc_v +  '/ccbar/JpsiPt30To50ToMuMuDstarToD0pi',
+    '/eos/user/m/mabarros/Monte_Carlo/' + mc_v +  '/ccbar/JpsiPt50To100ToMuMuDstarToD0pi',
 ]
 
 '''ps = [
@@ -45,8 +55,7 @@ exclude = [
     'DPS_D0ToKPi_JPsiPt-50To100_JPsiFilter_TuneCP5_13TeV-pythia8-evtgenRunIISummer20UL16RECO_41.root',
 ]
 
-with open('config/efficiency.yaml', 'r') as f:
-    config = yaml.load(f, Loader=yaml.FullLoader)
+
 
 def create_eff_hists2D(hist_num, hist_den, bins, names, hist_labels):
     eff_hist = (
