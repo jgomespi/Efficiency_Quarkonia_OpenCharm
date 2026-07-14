@@ -214,12 +214,9 @@ class EfficiencyProcessor(processor.ProcessorABC):
         muon_sim_cut = (Muon.slot0.simIdx > -1) & (Muon.slot1.simIdx > -1)
         dimu_pt_cut = (Dimu.pt > max(self.config['dimu_pt_min'], self.dimu_cut)) & (Dimu.pt < self.config['dimu_pt_max'])
         dimu_eta_cut = np.absolute(Dimu.rap) < self.config['dimu_rap']
-        Muon = ak.mask(Muon, muon_eta_cut & muon_pt_cut & muon_sim_cut & dimu_pt_cut & dimu_eta_cut)
-        Dimu = ak.mask(Dimu, muon_eta_cut & muon_pt_cut & muon_sim_cut & dimu_pt_cut & dimu_eta_cut)
-        arg_sort = ak.argsort(Dimu.pt, axis=1, ascending=False)
-
-        Dimu = Dimu[arg_sort]
-        Muon = Muon[arg_sort]
+        reco_cut = muon_eta_cut & muon_pt_cut & muon_sim_cut & dimu_pt_cut & dimu_eta_cut
+        Muon = ak.mask(Muon, reco_cut)
+        Dimu = ak.mask(Dimu, reco_cut)
 
         # Dstar cuts
         Dstar = Dstar[~Dstar.hasMuon]
@@ -233,6 +230,10 @@ class EfficiencyProcessor(processor.ProcessorABC):
 
         Dimu_aux = Dimu[remove_none(Dimu.pt)]
         Muon_aux = Muon[remove_none(Dimu.pt)]
+        if ak.sum(ak.num(Dimu_aux)) > 0:
+            arg_sort = ak.argsort(Dimu_aux.pt, axis=1, ascending=False)
+            Dimu_aux = Dimu_aux[arg_sort]
+            Muon_aux = Muon_aux[arg_sort]
 
         # Pile-up and muon ID/RECO corrections
         dimu_weight = get_weight(evaluator, Muon_aux, Dimu_aux, PVtx)
@@ -285,6 +286,10 @@ class EfficiencyProcessor(processor.ProcessorABC):
 
         Dimu_aux = Dimu[remove_none(Dimu.pt)]
         Muon_aux = Muon[remove_none(Dimu.pt)]
+        if ak.sum(ak.num(Dimu_aux)) > 0:
+            arg_sort = ak.argsort(Dimu_aux.pt, axis=1, ascending=False)
+            Dimu_aux = Dimu_aux[arg_sort]
+            Muon_aux = Muon_aux[arg_sort]
 
         # Pile-up and muon ID/RECO corrections
         dimu_weight = get_weight(evaluator, Muon_aux, Dimu_aux, PVtx)
@@ -313,6 +318,10 @@ class EfficiencyProcessor(processor.ProcessorABC):
 
         Dimu_aux = Dimu[remove_none(Dimu.pt)]
         Muon_aux = Muon[remove_none(Dimu.pt)]
+        if ak.sum(ak.num(Dimu_aux)) > 0:
+            arg_sort = ak.argsort(Dimu_aux.pt, axis=1, ascending=False)
+            Dimu_aux = Dimu_aux[arg_sort]
+            Muon_aux = Muon_aux[arg_sort]
 
         dimu_weight = get_weight(evaluator, Muon_aux, Dimu_aux, PVtx)
 
@@ -333,9 +342,10 @@ class EfficiencyProcessor(processor.ProcessorABC):
         MuonDstar = ak.zip({'0': Muon[Dstar.associationIdx], '1': Dstar})
         MuonDstar = MuonDstar[none_cut]
 
-        arg_sort = ak.argsort(DimuDstar['cand'].pt, axis=1, ascending=False)
-        DimuDstar = DimuDstar[arg_sort]
-        MuonDstar = MuonDstar[arg_sort]
+        if ak.sum(ak.num(DimuDstar)) > 0:
+            arg_sort = ak.argsort(DimuDstar['cand'].pt, axis=1, ascending=False)
+            DimuDstar = DimuDstar[arg_sort]
+            MuonDstar = MuonDstar[arg_sort]
 
         weight = get_weight(evaluator, MuonDstar.slot0, DimuDstar.slot1, PVtx)
 
