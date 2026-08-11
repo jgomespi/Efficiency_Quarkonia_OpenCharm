@@ -210,7 +210,7 @@ class EfficiencyProcessor(processor.ProcessorABC):
         Muon = ak.zip({'0': ak.where(leading_mu, Muon.slot0, Muon.slot1), '1': ak.where(~leading_mu, Muon.slot0, Muon.slot1)})
 
         muon_pt_cut = (Muon.slot0.pt > self.config['muon_pt_min']) & (Muon.slot1.pt > self.config['muon_pt_min'])
-        muon_eta_cut = (np.absolute(Muon.slot0.eta) < self.config['muon_eta']) & (np.absolute(Muon.slot0.eta) < self.config['muon_eta'])
+        muon_eta_cut = (np.absolute(Muon.slot0.eta) < self.config['muon_eta']) & (np.absolute(Muon.slot1.eta) < self.config['muon_eta'])
         muon_sim_cut = (Muon.slot0.simIdx > -1) & (Muon.slot1.simIdx > -1)
         dimu_pt_cut = (Dimu.pt > max(self.config['dimu_pt_min'], self.dimu_cut)) & (Dimu.pt < self.config['dimu_pt_max'])
         dimu_eta_cut = np.absolute(Dimu.rap) < self.config['dimu_rap']
