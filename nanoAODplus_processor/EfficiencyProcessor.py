@@ -241,20 +241,20 @@ class EfficiencyProcessor(processor.ProcessorABC):
 
         output['Gen_Dimu'].fill(
             pt=GenPart_Dimu[ak.num(GenPart_Dimu)>0].pt[:,0], 
-            rap=GenPart_Dimu[ak.num(GenPart_Dimu)>0].rap[:,0],
+            rap=np.absolute(GenPart_Dimu[ak.num(GenPart_Dimu)>0].rap[:,0]),
         )
         output['Reco_Dimu'].fill(
             pt=Dimu_aux[ak.num(Dimu_aux)>0].pt[:,0], 
-            rap=Dimu_aux[ak.num(Dimu_aux)>0].rap[:,0],
+            rap=np.absolute(Dimu_aux[ak.num(Dimu_aux)>0].rap[:,0]),
             weight=dimu_weight,
         )
         output['Gen_Dstar'].fill(
             pt=GenPart_Dstar[ak.num(GenPart_Dstar)>0].pt[:,0], 
-            rap=GenPart_Dstar[ak.num(GenPart_Dstar)>0].rap[:,0],
+            rap=np.absolute(GenPart_Dstar[ak.num(GenPart_Dstar)>0].rap[:,0]),
         )
         output['Reco_Dstar'].fill(
             pt=Dstar_sim[ak.num(Dstar_sim)>0].pt[:,0], 
-            rap=Dstar_sim[ak.num(Dstar_sim)>0].rap[:,0],
+            rap=np.absolute(Dstar_sim[ak.num(Dstar_sim)>0].rap[:,0]),
             weight=dstar_weight,
         )
 
@@ -297,12 +297,12 @@ class EfficiencyProcessor(processor.ProcessorABC):
 
         output['Cuts_Dimu'].fill(
             pt=Dimu_aux[ak.num(Dimu_aux)>0].pt[:,0], 
-            rap=Dimu_aux[ak.num(Dimu_aux)>0].rap[:,0],
+            rap=np.absolute(Dimu_aux[ak.num(Dimu_aux)>0].rap[:,0]),
             weight=dimu_weight,
         )
         output['Cuts_Dstar'].fill(
             pt=Dstar[ak.num(Dstar)>0].pt[:,0], 
-            rap=Dstar[ak.num(Dstar)>0].rap[:,0],
+            rap=np.absolute(Dstar[ak.num(Dstar)>0].rap[:,0]),
             weight=dstar_weight,
         )
 
@@ -327,7 +327,7 @@ class EfficiencyProcessor(processor.ProcessorABC):
 
         output['Trigger_Dimu'].fill(
             pt=Dimu_aux[ak.num(Dimu_aux)>0].pt[:,0], 
-            rap=Dimu_aux[ak.num(Dimu_aux)>0].rap[:,0],
+            rap=np.absolute(Dimu_aux[ak.num(Dimu_aux)>0].rap[:,0]),
             weight=dimu_weight,
         )
 
@@ -351,9 +351,9 @@ class EfficiencyProcessor(processor.ProcessorABC):
 
         output['Den_Asso'].fill(
             pt_dimu=DimuDstar[ak.num(DimuDstar)>0].slot0.pt[:,0], 
-            rap_dimu=DimuDstar[ak.num(DimuDstar)>0].slot0.rap[:,0],
+            rap_dimu=np.absolute(DimuDstar[ak.num(DimuDstar)>0].slot0.rap[:,0]),
             pt_dstar=DimuDstar[ak.num(DimuDstar)>0].slot1.pt[:,0], 
-            rap_dstar=DimuDstar[ak.num(DimuDstar)>0].slot1.rap[:,0],
+            rap_dstar=np.absolute(DimuDstar[ak.num(DimuDstar)>0].slot1.rap[:,0]),
             weight=weight,
         )
 
@@ -364,9 +364,9 @@ class EfficiencyProcessor(processor.ProcessorABC):
 
         output['Num_Asso'].fill(
             pt_dimu=DimuDstar[ak.num(DimuDstar)>0].slot0.pt[:,0], 
-            rap_dimu=DimuDstar[ak.num(DimuDstar)>0].slot0.rap[:,0],
+            rap_dimu=np.absolute(DimuDstar[ak.num(DimuDstar)>0].slot0.rap[:,0]),
             pt_dstar=DimuDstar[ak.num(DimuDstar)>0].slot1.pt[:,0], 
-            rap_dstar=DimuDstar[ak.num(DimuDstar)>0].slot1.rap[:,0],
+            rap_dstar=np.absolute(DimuDstar[ak.num(DimuDstar)>0].slot1.rap[:,0]),
             weight=weight,
         )
 

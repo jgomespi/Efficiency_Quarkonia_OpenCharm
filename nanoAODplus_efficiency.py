@@ -2,6 +2,7 @@ import time
 import yaml
 import uproot
 from hist.intervals import ratio_uncertainty
+from scipy.stats import beta
 import pathlib
 
 from coffea.nanoevents import BaseSchema
@@ -31,16 +32,25 @@ from tools.figure import create_plot2d
 with open('config/efficiency.yaml', 'r') as f:
     config = yaml.load(f, Loader=yaml.FullLoader)
 
-if config['mc_type'] == 'DPS-ccbar':
+mc_type = config['mc_type']
+
+if mc_type == 'DPS-ccbar':
     mc_v = 'dps_official'
-elif config['mc_type'] == 'SPS-ccbar':
+    mc_flavor = 'ccbar'
+elif mc_type == 'DPS-bbbar':
+    mc_v = 'dps_official'
+    mc_flavor = 'bbbar'
+elif mc_type == 'SPS-ccbar':
     mc_v = 'sps_official'
+    mc_flavor = 'ccbar'
+else:
+    raise ValueError(f"Unsupported mc_type: {mc_type}")
 
 years = ['2016APV', '2016', '2017', '2018']
 ps = [
-    '/eos/user/m/mabarros/Monte_Carlo/' + mc_v +  '/ccbar/JpsiPt9To30ToMuMuDstarToD0pi',
-    '/eos/user/m/mabarros/Monte_Carlo/' + mc_v +  '/ccbar/JpsiPt30To50ToMuMuDstarToD0pi',
-    '/eos/user/m/mabarros/Monte_Carlo/' + mc_v +  '/ccbar/JpsiPt50To100ToMuMuDstarToD0pi',
+    '/eos/user/m/mabarros/Monte_Carlo/' + mc_v + '/' + mc_flavor + '/JpsiPt9To30ToMuMuDstarToD0pi',
+    '/eos/user/m/mabarros/Monte_Carlo/' + mc_v + '/' + mc_flavor + '/JpsiPt30To50ToMuMuDstarToD0pi',
+    '/eos/user/m/mabarros/Monte_Carlo/' + mc_v + '/' + mc_flavor + '/JpsiPt50To100ToMuMuDstarToD0pi',
 ]
 
 '''ps = [
@@ -55,6 +65,100 @@ exclude = [
     'DPS_D0ToKPi_JPsiPt-50To100_JPsiFilter_TuneCP5_13TeV-pythia8-evtgenRunIISummer20UL16RECO_41.root',
 ]
 
+
+
+
+def weighted_efficiency_statistics(
+    hist_num,
+    hist_den,
+    coverage=0.682689492137,
+):
+    """
+    Weighted efficiency and effective-statistics Clopper-Pearson interval.
+
+    N_eff = (sum w)^2 / sum(w^2)
+
+    The central efficiency remains sumw_num / sumw_den.
+    """
+    num = np.asarray(hist_num.values(flow=False), dtype=float)
+    den = np.asarray(hist_den.values(flow=False), dtype=float)
+
+    num_sumw2 = np.asarray(hist_num.variances(flow=False), dtype=float)
+    den_sumw2 = np.asarray(hist_den.variances(flow=False), dtype=float)
+
+    valid = (
+        np.isfinite(num)
+        & np.isfinite(den)
+        & np.isfinite(num_sumw2)
+        & np.isfinite(den_sumw2)
+        & (den > 0.0)
+        & (den_sumw2 > 0.0)
+    )
+
+    tolerance = 1.0e-10 * np.maximum(1.0, np.abs(den))
+    inconsistent = valid & (
+        (num < -tolerance)
+        | (num > den + tolerance)
+        | (num_sumw2 < 0.0)
+        | (den_sumw2 < 0.0)
+    )
+
+    if np.any(inconsistent):
+        indices = np.argwhere(inconsistent)
+        raise RuntimeError(
+            "Weighted numerator/denominator inconsistency in bins: "
+            f"{indices.tolist()}"
+        )
+
+    num_clipped = np.minimum(np.maximum(num, 0.0), den)
+
+    efficiency = np.full_like(den, np.nan)
+    n_eff = np.full_like(den, np.nan)
+    err_down = np.full_like(den, np.nan)
+    err_up = np.full_like(den, np.nan)
+
+    efficiency[valid] = num_clipped[valid] / den[valid]
+    n_eff[valid] = den[valid] ** 2 / den_sumw2[valid]
+
+    k_eff = np.full_like(den, np.nan)
+    k_eff[valid] = efficiency[valid] * n_eff[valid]
+    k_eff[valid] = np.minimum(
+        np.maximum(k_eff[valid], 0.0),
+        n_eff[valid],
+    )
+
+    alpha = 1.0 - coverage
+
+    lower = np.zeros_like(den)
+    upper = np.ones_like(den)
+
+    has_pass = valid & (k_eff > 0.0)
+    lower[has_pass] = beta.ppf(
+        alpha / 2.0,
+        k_eff[has_pass],
+        n_eff[has_pass] - k_eff[has_pass] + 1.0,
+    )
+
+    has_fail = valid & (k_eff < n_eff)
+    upper[has_fail] = beta.ppf(
+        1.0 - alpha / 2.0,
+        k_eff[has_fail] + 1.0,
+        n_eff[has_fail] - k_eff[has_fail],
+    )
+
+    err_down[valid] = efficiency[valid] - lower[valid]
+    err_up[valid] = upper[valid] - efficiency[valid]
+
+    return {
+        "efficiency": efficiency,
+        "err_up": err_up,
+        "err_down": err_down,
+        "n_eff": n_eff,
+        "num_sumw": num,
+        "num_sumw2": num_sumw2,
+        "den_sumw": den,
+        "den_sumw2": den_sumw2,
+    }
 
 
 def create_eff_hists2D(hist_num, hist_den, bins, names, hist_labels):
@@ -238,6 +342,51 @@ if __name__ == '__main__':
             hists['Num_Asso']       += out['Num_Asso']
             hists['Den_Asso']       += out['Den_Asso']
 
+    # Integrated summary for validation against AN Table 25
+    def integral(histogram):
+        return float(np.sum(histogram.values(flow=False)))
+
+    integrated_efficiencies = {
+        'acc_dimu': (
+            integral(hists['Reco_Dimu']) /
+            integral(hists['Gen_Dimu'])
+        ),
+        'acc_dstar': (
+            integral(hists['Reco_Dstar']) /
+            integral(hists['Gen_Dstar'])
+        ),
+        'eff_cuts_dstar': (
+            integral(hists['Cuts_Dstar']) /
+            integral(hists['Reco_Dstar'])
+        ),
+        'eff_cuts_dimu': (
+            integral(hists['Cuts_Dimu']) /
+            integral(hists['Reco_Dimu'])
+        ),
+        'eff_trigger': (
+            integral(hists['Trigger_Dimu']) /
+            integral(hists['Cuts_Dimu'])
+        ),
+        'eff_asso_pt': (
+            integral(hists['Num_Asso']) /
+            integral(hists['Den_Asso'])
+        ),
+    }
+
+    integrated_efficiencies['global'] = np.prod([
+        integrated_efficiencies['acc_dimu'],
+        integrated_efficiencies['acc_dstar'],
+        integrated_efficiencies['eff_cuts_dstar'],
+        integrated_efficiencies['eff_cuts_dimu'],
+        integrated_efficiencies['eff_trigger'],
+        integrated_efficiencies['eff_asso_pt'],
+    ])
+
+    print("\nIntegrated efficiencies for AN Table 25 comparison:")
+    for name, value in integrated_efficiencies.items():
+        print(f"{name:20s}: {value:.8f}")
+    print()
+
     acc_dimu_hist, acc_dimu_err_up, acc_dimu_err_down = create_eff_hists2D(
         hists['Reco_Dimu'], 
         hists['Gen_Dimu'],
@@ -366,6 +515,92 @@ if __name__ == '__main__':
     eff_file['eff_asso_pt_err_down']     = eff_asso_pt_err_down_hist.to_numpy()
     eff_file['eff_asso_rap_err_up']      = eff_asso_rap_err_up_hist.to_numpy()
     eff_file['eff_asso_rap_err_down']    = eff_asso_rap_err_down_hist.to_numpy()
+
+
+    # Save weighted numerator/denominator statistics for reproducibility.
+    efficiency_pairs = {
+        "acc_dimu": (
+            hists["Reco_Dimu"],
+            hists["Gen_Dimu"],
+        ),
+        "acc_dstar": (
+            hists["Reco_Dstar"],
+            hists["Gen_Dstar"],
+        ),
+        "eff_cuts_dimu": (
+            hists["Cuts_Dimu"],
+            hists["Reco_Dimu"],
+        ),
+        "eff_cuts_dstar": (
+            hists["Cuts_Dstar"],
+            hists["Reco_Dstar"],
+        ),
+        "eff_trigger": (
+            hists["Trigger_Dimu"],
+            hists["Cuts_Dimu"],
+        ),
+        "eff_asso_pt": (
+            hists["Num_Asso"].project("pt_dimu", "pt_dstar"),
+            hists["Den_Asso"].project("pt_dimu", "pt_dstar"),
+        ),
+        "eff_asso_rap": (
+            hists["Num_Asso"].project("rap_dimu", "rap_dstar"),
+            hists["Den_Asso"].project("rap_dimu", "rap_dstar"),
+        ),
+    }
+
+    print("\nWeighted effective-statistics summary:")
+
+    for name, (num_hist, den_hist) in efficiency_pairs.items():
+        stats = weighted_efficiency_statistics(num_hist, den_hist)
+
+        edges = tuple(
+            np.asarray(axis.edges, dtype=float)
+            for axis in den_hist.axes
+        )
+
+        eff_file[f"{name}_err_up_weighted"] = (
+            stats["err_up"],
+            *edges,
+        )
+        eff_file[f"{name}_err_down_weighted"] = (
+            stats["err_down"],
+            *edges,
+        )
+        eff_file[f"{name}_n_eff"] = (
+            stats["n_eff"],
+            *edges,
+        )
+
+        eff_file[f"raw/{name}_num_sumw"] = (
+            stats["num_sumw"],
+            *edges,
+        )
+        eff_file[f"raw/{name}_num_sumw2"] = (
+            stats["num_sumw2"],
+            *edges,
+        )
+        eff_file[f"raw/{name}_den_sumw"] = (
+            stats["den_sumw"],
+            *edges,
+        )
+        eff_file[f"raw/{name}_den_sumw2"] = (
+            stats["den_sumw2"],
+            *edges,
+        )
+
+        finite = stats["n_eff"][np.isfinite(stats["n_eff"])]
+
+        if finite.size:
+            print(
+                f"{name:20s}: "
+                f"N_eff min={finite.min():.2f}, "
+                f"max={finite.max():.2f}, "
+                f"bins<10={np.count_nonzero(finite < 10.0)}, "
+                f"bins<25={np.count_nonzero(finite < 25.0)}"
+            )
+        else:
+            print(f"{name:20s}: no valid bins")
 
     if args.plot:
         # Create plots of all the components
