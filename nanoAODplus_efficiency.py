@@ -32,33 +32,38 @@ from tools.figure import create_plot2d
 with open('config/efficiency.yaml', 'r') as f:
     config = yaml.load(f, Loader=yaml.FullLoader)
 
-mc_type = config['mc_type']
-
-if mc_type == 'DPS-ccbar':
-    mc_v = 'dps_official'
-    mc_flavor = 'ccbar'
-elif mc_type == 'DPS-bbbar':
-    mc_v = 'dps_official'
-    mc_flavor = 'bbbar'
-elif mc_type == 'SPS-ccbar':
-    mc_v = 'sps_official'
-    mc_flavor = 'ccbar'
-else:
-    raise ValueError(f"Unsupported mc_type: {mc_type}")
-
 years = ['2016APV', '2016', '2017', '2018']
-ps = [
-    '/eos/user/m/mabarros/Monte_Carlo/' + mc_v + '/' + mc_flavor + '/JpsiPt9To30ToMuMuDstarToD0pi',
-    '/eos/user/m/mabarros/Monte_Carlo/' + mc_v + '/' + mc_flavor + '/JpsiPt30To50ToMuMuDstarToD0pi',
-    '/eos/user/m/mabarros/Monte_Carlo/' + mc_v + '/' + mc_flavor + '/JpsiPt50To100ToMuMuDstarToD0pi',
+
+mc_types = [
+    'DPS-ccbar',
+    'DPS-bbbar',
+    'SPS-ccbar',
+    'SPS-bbbar',
 ]
 
-'''ps = [
-    '/eos/user/m/mabarros/Monte_Carlo/2017/jpsi_bbbar_DPS_2017_13TeV/JpsiPt9To30ToMuMuDstarToD0pi',
-    '/eos/user/m/mabarros/Monte_Carlo/2017/jpsi_bbbar_DPS_2017_13TeV/JpsiPt30To50ToMuMuDstarToD0pi',
-    '/eos/user/m/mabarros/Monte_Carlo/2017/jpsi_bbbar_DPS_2017_13TeV/JpsiPt50To100ToMuMuDstarToD0pi',
-]'''
+with open('config/samples.yaml', 'r') as f:
+    sample_config = yaml.load(
+        f,
+        Loader=yaml.FullLoader,
+    )['samples']
 
+
+def get_sample_specs(mc_type, year):
+    if mc_type not in sample_config:
+        raise ValueError(
+            f"Unsupported mc_type={mc_type!r}; "
+            f"choose from {sorted(sample_config)}"
+        )
+
+    specs = sample_config[mc_type].get(year, [])
+
+    if not specs:
+        raise RuntimeError(
+            f"No input samples configured for {mc_type}, {year}. "
+            "Fill config/samples.yaml before running this production."
+        )
+
+    return specs
 
 
 exclude = [
@@ -275,41 +280,127 @@ def create_eff_plot1D(hist_num, hist_den, bins, names, hist_labels, savename, yl
 
 if __name__ == '__main__':
     import argparse
-    parser = argparse.ArgumentParser(description="Create efficiency plots")
-    parser.add_argument("-y", "--year", help="Year to create efficiency", type=str, required=True, choices=years)
-    parser.add_argument("-p", "--plot", help="Plot efficiency", action='store_true')
-    args = parser.parse_args()   
+    parser = argparse.ArgumentParser(
+        description="Create efficiency plots"
+    )
+
+    parser.add_argument(
+        "-y",
+        "--year",
+        help="Year to create efficiency",
+        type=str,
+        required=True,
+        choices=years,
+    )
+
+    parser.add_argument(
+        "-m",
+        "--mc-type",
+        dest="mc_type",
+        choices=mc_types,
+        default=config.get("mc_type", "DPS-ccbar"),
+        help="MC component. CLI value overrides config/efficiency.yaml.",
+    )
+
+    parser.add_argument(
+        "-p",
+        "--plot",
+        help="Plot efficiency",
+        action="store_true",
+    )
+
+    parser.add_argument(
+        "--workers",
+        type=int,
+        default=8,
+        help="Number of futures workers",
+    )
+
+    args = parser.parse_args()
 
     year = args.year
+    mc_type = args.mc_type
 
-    paths = [f'{p}_{year}' for p in ps] #-v2 was removed (in kevin's)
-    files = [get_files([p], exclude=exclude) for p in paths]
+    # Keep the existing output-name machinery unchanged.
+    config["mc_type"] = mc_type
+
+    specs = get_sample_specs(mc_type, year)
+
+    samples = []
+
+    for spec in specs:
+        path = spec["path"]
+        sample_cut = float(
+            spec.get(
+                "dimu_cut",
+                config["dimu_pt_min"],
+            )
+        )
+
+        if not pathlib.Path(path).is_dir():
+            raise FileNotFoundError(
+                f"Input directory does not exist: {path}"
+            )
+
+        file_list = get_files(
+            [path],
+            exclude=exclude,
+        )
+
+        if not file_list:
+            raise RuntimeError(
+                "No non-empty ROOT files found directly inside: "
+                f"{path}"
+            )
+
+        samples.append(
+            (path, sample_cut, file_list)
+        )
+
+    print(f"MC component: {mc_type}")
+    print(f"Year: {year}")
+
+    for path, sample_cut, file_list in samples:
+        print(
+            f"  {len(file_list):4d} ROOT files | "
+            f"dimu_cut={sample_cut:g} GeV | "
+            f"{path}"
+        )
 
     output = []
     tstart = time.time()
-    for f in files:
-        data = {"test": f[:]}
 
-        # It takes one sample at a time
-        print(f[0])
-        sample_cut = float(f[0][f[0].find('Pt')+2:f[0].find('To')])
-        print(f"Treating file with Pt > {sample_cut}")
+    for path, sample_cut, file_list in samples:
+
+        data = {
+            "test": file_list[:]
+        }
+
+        print(file_list[0])
+        print(
+            "Treating sample with generated "
+            f"J/psi pT > {sample_cut:g} GeV"
+        )
 
         output.append(
             processor.run_uproot_job(
-                data, 
-                treename='Events',
+                data,
+                treename="Events",
                 processor_instance=EfficiencyProcessor(
                     dimu_cut=sample_cut,
                     year=year,
                     config=config,
                 ),
                 executor=processor.futures_executor,
-                executor_args={"schema": BaseSchema, 'workers': 8, 'skipbadfiles': True},
+                executor_args={
+                    "schema": BaseSchema,
+                    "workers": args.workers,
+                    "skipbadfiles": True,
+                },
                 chunksize=360000,
             )
-                                    
         )
+
     print(f"Process finished in: {time.time() - tstart:.2f} s")
     
     # Loop to return the number of events in the sample

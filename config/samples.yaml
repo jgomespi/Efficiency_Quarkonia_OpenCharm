@@ -1,0 +1,48 @@
+# Input samples for the J/psi + D* efficiency calculation.
+#
+# dimu_cut is the lower generator-level J/psi pT limit appropriate
+# for that production. Empty lists mean "sample not available yet".
+#
+# When new Run-2 productions arrive, only this file needs to change.
+
+samples:
+
+  DPS-ccbar:
+    "2016APV": []
+    "2016": []
+    "2017":
+      - path: /eos/user/m/mabarros/Monte_Carlo/dps_official/ccbar/JpsiPt9To30ToMuMuDstarToD0pi_2017
+        dimu_cut: 9.0
+      - path: /eos/user/m/mabarros/Monte_Carlo/dps_official/ccbar/JpsiPt30To50ToMuMuDstarToD0pi_2017
+        dimu_cut: 30.0
+      - path: /eos/user/m/mabarros/Monte_Carlo/dps_official/ccbar/JpsiPt50To100ToMuMuDstarToD0pi_2017
+        dimu_cut: 50.0
+    "2018": []
+
+  DPS-bbbar:
+    "2016APV": []
+    "2016": []
+    "2017":
+      - path: /eos/user/m/mabarros/Monte_Carlo/dps_official/bbbar/JpsiPt9To30ToMuMuDstarToD0pi_2017
+        dimu_cut: 9.0
+      - path: /eos/user/m/mabarros/Monte_Carlo/dps_official/bbbar/JpsiPt30To50ToMuMuDstarToD0pi_2017
+        dimu_cut: 30.0
+      - path: /eos/user/m/mabarros/Monte_Carlo/dps_official/bbbar/JpsiPt50To100ToMuMuDstarToD0pi_2017
+        dimu_cut: 50.0
+    "2018": []
+
+  SPS-ccbar:
+    "2016APV": []
+    "2016": []
+    "2017":
+      - path: /eos/user/s/sfonseca/LHE_SPS/jpsi_ccbar_25to100_3FS_SPS_2017_nanoaodplus
+        dimu_cut: 25.0
+    "2018": []
+
+  SPS-bbbar:
+    "2016APV": []
+    "2016": []
+    "2017":
+      - path: /eos/user/s/sfonseca/LHE_SPS/jpsi_bbbar_25to100_3FS_SPS_2017_nanoaodplus
+        dimu_cut: 25.0
+    "2018": []
