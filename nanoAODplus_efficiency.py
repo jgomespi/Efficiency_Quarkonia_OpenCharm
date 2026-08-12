@@ -17,6 +17,8 @@ import hist
 
 from nanoAODplus_processor.EfficiencyProcessor import EfficiencyProcessor
 from coffea.nanoevents.methods import candidate
+from coffea.util import load as coffea_load
+from coffea.util import save as coffea_save
 ak.behavior.update(candidate.behavior)
 
 import matplotlib.pyplot as plt
@@ -68,6 +70,7 @@ def get_sample_specs(mc_type, year):
 
 exclude = [
     'DPS_D0ToKPi_JPsiPt-50To100_JPsiFilter_TuneCP5_13TeV-pythia8-evtgenRunIISummer20UL16RECO_41.root',
+    'Jpsi_25to100_Dstar_SPS_bbbar_3FS_2017_13TeV_NanoAODPlus_1037.root',
 ]
 
 
@@ -165,36 +168,124 @@ def weighted_efficiency_statistics(
         "den_sumw2": den_sumw2,
     }
 
+def weighted_ratio_statistics(hist_num, hist_den):
+    """
+    Ratio of two weighted histograms using first-order error propagation.
 
-def create_eff_hists2D(hist_num, hist_den, bins, names, hist_labels):
+    Appropriate for response/correction ratios where numerator and
+    denominator are not a strict binomial pass/total pair.
+
+    The covariance is not available from the marginal histograms and is
+    therefore omitted. This gives a conservative statistical estimate
+    when numerator and denominator are positively correlated.
+    """
+    num = np.asarray(hist_num.values(flow=False), dtype=float)
+    den = np.asarray(hist_den.values(flow=False), dtype=float)
+
+    num_sumw2 = np.asarray(
+        hist_num.variances(flow=False),
+        dtype=float,
+    )
+    den_sumw2 = np.asarray(
+        hist_den.variances(flow=False),
+        dtype=float,
+    )
+
+    valid = (
+        np.isfinite(num)
+        & np.isfinite(den)
+        & np.isfinite(num_sumw2)
+        & np.isfinite(den_sumw2)
+        & (den > 0.0)
+        & (num_sumw2 >= 0.0)
+        & (den_sumw2 > 0.0)
+    )
+
+    ratio = np.full_like(den, np.nan)
+    variance = np.full_like(den, np.nan)
+    n_eff = np.full_like(den, np.nan)
+
+    ratio[valid] = num[valid] / den[valid]
+
+    variance[valid] = (
+        num_sumw2[valid] / den[valid]**2
+        +
+        num[valid]**2
+        * den_sumw2[valid]
+        / den[valid]**4
+    )
+
+    variance[valid] = np.maximum(
+        variance[valid],
+        0.0,
+    )
+
+    error = np.full_like(den, np.nan)
+    error[valid] = np.sqrt(variance[valid])
+
+    n_eff[valid] = (
+        den[valid]**2
+        / den_sumw2[valid]
+    )
+
+    return {
+        "efficiency": ratio,
+        "err_up": error,
+        "err_down": error,
+        "n_eff": n_eff,
+        "num_sumw": num,
+        "num_sumw2": num_sumw2,
+        "den_sumw": den,
+        "den_sumw2": den_sumw2,
+    }
+
+def create_eff_hists2D(
+    hist_num,
+    hist_den,
+    bins,
+    names,
+    hist_labels,
+    statistics="efficiency",
+):
     eff_hist = (
         Hist.new
-        .Variable(bins[0], name=names[0], label=hist_labels[0])
-        .Variable(bins[1], name=names[1], label=hist_labels[1])
+        .Variable(
+            bins[0],
+            name=names[0],
+            label=hist_labels[0],
+        )
+        .Variable(
+            bins[1],
+            name=names[1],
+            label=hist_labels[1],
+        )
         .Double()
     )
 
-    num = hist_num.values()
-    den = hist_den.values()
+    if statistics == "efficiency":
+        stats = weighted_efficiency_statistics(
+            hist_num,
+            hist_den,
+        )
 
-    values = np.where(
-        (num > 0) & (den > 0),
-        num/den,
-        1.0,    
-    )
-    err_down, err_up = np.where(
-        (den > 0),
-        ratio_uncertainty(num, den, uncertainty_type='efficiency'),
-        #ratio_uncertainty(num, den, uncertainty_type='poisson-ratio'),
-        0.0
-    )
-    #err = np.where((err_up > err_down), err_up, err_down)
+    elif statistics == "ratio":
+        stats = weighted_ratio_statistics(
+            hist_num,
+            hist_den,
+        )
+
+    else:
+        raise ValueError(
+            f"Unknown statistics mode: {statistics}"
+        )
+
+    values = stats["efficiency"]
+    err_up = stats["err_up"]
+    err_down = stats["err_down"]
 
     eff_hist[...] = values
-    #eff_hist[...] = np.stack([values, err**2], axis=-1)
 
     return eff_hist, err_up, err_down
-    
 
 def create_eff_plot2D(hist_eff, err_up, err_down, savename, year, with_labels=True, **kwargs):
     fig, ax = plt.subplots()
@@ -316,6 +407,12 @@ if __name__ == '__main__':
         help="Number of futures workers",
     )
 
+    parser.add_argument(
+        "--from-cache",
+        action="store_true",
+        help="Skip NanoAOD processing and load the merged histogram cache.",
+    )
+
     args = parser.parse_args()
 
     year = args.year
@@ -324,114 +421,155 @@ if __name__ == '__main__':
     # Keep the existing output-name machinery unchanged.
     config["mc_type"] = mc_type
 
-    specs = get_sample_specs(mc_type, year)
+    cache_dir = pathlib.Path("output/efficiency/cache")
+    cache_dir.mkdir(parents=True, exist_ok=True)
 
-    samples = []
+    cache_file = (
+        cache_dir
+        / f"{mc_type}_{year}_merged.coffea"
+    )
 
-    for spec in specs:
-        path = spec["path"]
-        sample_cut = float(
-            spec.get(
-                "dimu_cut",
-                config["dimu_pt_min"],
-            )
-        )
+    if args.from_cache:
 
-        if not pathlib.Path(path).is_dir():
+        if not cache_file.exists():
             raise FileNotFoundError(
-                f"Input directory does not exist: {path}"
+                f"Cache not found: {cache_file}"
             )
 
-        file_list = get_files(
-            [path],
-            exclude=exclude,
-        )
+        print(f"Loading merged histograms from: {cache_file}")
+        hists = coffea_load(str(cache_file))
 
-        if not file_list:
-            raise RuntimeError(
-                "No non-empty ROOT files found directly inside: "
+    else:
+
+        specs = get_sample_specs(mc_type, year)
+
+        samples = []
+
+        for spec in specs:
+
+            path = spec["path"]
+
+            sample_cut = float(
+                spec.get(
+                    "dimu_cut",
+                    config["dimu_pt_min"],
+                )
+            )
+
+            recursive = bool(
+                spec.get("recursive", False)
+            )
+
+            if not pathlib.Path(path).is_dir():
+                raise FileNotFoundError(
+                    f"Input directory does not exist: {path}"
+                )
+
+            file_list = get_files(
+                [path],
+                exclude=exclude,
+                recursive=recursive,
+            )
+
+            if not file_list:
+                raise RuntimeError(
+                    f"No non-empty ROOT files found in: {path}"
+                )
+
+            samples.append(
+                (path, sample_cut, file_list)
+            )
+
+        print(f"MC component: {mc_type}")
+        print(f"Year: {year}")
+
+        for path, sample_cut, file_list in samples:
+            print(
+                f"  {len(file_list):4d} ROOT files | "
+                f"dimu_cut={sample_cut:g} GeV | "
                 f"{path}"
             )
 
-        samples.append(
-            (path, sample_cut, file_list)
-        )
+        output = []
+        tstart = time.time()
 
-    print(f"MC component: {mc_type}")
-    print(f"Year: {year}")
+        for path, sample_cut, file_list in samples:
 
-    for path, sample_cut, file_list in samples:
-        print(
-            f"  {len(file_list):4d} ROOT files | "
-            f"dimu_cut={sample_cut:g} GeV | "
-            f"{path}"
-        )
+            data = {
+                "test": file_list[:]
+            }
 
-    output = []
-    tstart = time.time()
+            print(file_list[0])
 
-    for path, sample_cut, file_list in samples:
-
-        data = {
-            "test": file_list[:]
-        }
-
-        print(file_list[0])
-        print(
-            "Treating sample with generated "
-            f"J/psi pT > {sample_cut:g} GeV"
-        )
-
-        output.append(
-            processor.run_uproot_job(
-                data,
-                treename="Events",
-                processor_instance=EfficiencyProcessor(
-                    dimu_cut=sample_cut,
-                    year=year,
-                    config=config,
-                ),
-                executor=processor.futures_executor,
-                executor_args={
-                    "schema": BaseSchema,
-                    "workers": args.workers,
-                    "skipbadfiles": True,
-                },
-                chunksize=360000,
+            print(
+                "Treating sample with generated "
+                f"J/psi pT > {sample_cut:g} GeV"
             )
+
+            output.append(
+                processor.run_uproot_job(
+                    data,
+                    treename="Events",
+                    processor_instance=EfficiencyProcessor(
+                        dimu_cut=sample_cut,
+                        year=year,
+                        config=config,
+                    ),
+                    executor=processor.futures_executor,
+                    executor_args={
+                        "schema": BaseSchema,
+                        "workers": args.workers,
+                        "skipbadfiles": True,
+                    },
+                    chunksize=360000,
+                )
+            )
+
+        print(
+            f"Process finished in: "
+            f"{time.time() - tstart:.2f} s"
         )
 
-    print(f"Process finished in: {time.time() - tstart:.2f} s")
-    
-    # Loop to return the number of events in the sample
-    nevt = 0
-    for i in range(0, len(output)):
-        nevt +=output[i]['cutflow']['Number of events']
-    print(f"Number of events: {nevt}")
+        nevt = 0
 
-    # Merge the hists
-    hists = {}
-    for i, out in enumerate(output):
-        if i == 0:
-            hists['Gen_Dimu']       = out['Gen_Dimu']
-            hists['Reco_Dimu']      = out['Reco_Dimu']
-            hists['Gen_Dstar']      = out['Gen_Dstar']
-            hists['Reco_Dstar']     = out['Reco_Dstar']
-            hists['Cuts_Dimu']      = out['Cuts_Dimu']
-            hists['Cuts_Dstar']     = out['Cuts_Dstar']
-            hists['Trigger_Dimu']   = out['Trigger_Dimu']
-            hists['Num_Asso']       = out['Num_Asso']
-            hists['Den_Asso']       = out['Den_Asso']
-        else:
-            hists['Gen_Dimu']       += out['Gen_Dimu']
-            hists['Reco_Dimu']      += out['Reco_Dimu']
-            hists['Gen_Dstar']      += out['Gen_Dstar']
-            hists['Reco_Dstar']     += out['Reco_Dstar']
-            hists['Cuts_Dimu']      += out['Cuts_Dimu']
-            hists['Cuts_Dstar']     += out['Cuts_Dstar']
-            hists['Trigger_Dimu']   += out['Trigger_Dimu']
-            hists['Num_Asso']       += out['Num_Asso']
-            hists['Den_Asso']       += out['Den_Asso']
+        for out in output:
+            nevt += out["cutflow"]["Number of events"]
+
+        print(f"Number of events: {nevt}")
+
+        hists = {}
+
+        keys = [
+            "Gen_Dimu",
+            "Reco_Dimu",
+            "Gen_Dstar",
+            "Reco_Dstar",
+            "Cuts_Dimu",
+            "Cuts_Dstar",
+            "Trigger_Dimu",
+            "Num_Asso",
+            "Den_Asso",
+        ]
+
+        for i, out in enumerate(output):
+
+            if i == 0:
+                for key in keys:
+                    hists[key] = out[key]
+
+            else:
+                for key in keys:
+                    hists[key] += out[key]
+
+        coffea_save(
+            hists,
+            str(cache_file),
+        )
+
+        print(
+            f"Merged histograms saved to: "
+            f"{cache_file}"
+        )
 
     # Integrated summary for validation against AN Table 25
     def integral(histogram):
@@ -478,19 +616,80 @@ if __name__ == '__main__':
         print(f"{name:20s}: {value:.8f}")
     print()
 
+    def diagnose_efficiency_pair(name, num_hist, den_hist):
+        num = np.asarray(num_hist.values(flow=False), dtype=float)
+        den = np.asarray(den_hist.values(flow=False), dtype=float)
+
+        valid = den > 0
+        ratio = np.full_like(den, np.nan)
+        ratio[valid] = num[valid] / den[valid]
+
+        bad = valid & (num > den)
+
+        print(f"\n===== {name} =====")
+        print(f"max(num/den) = {np.nanmax(ratio):.8f}")
+        print(f"bins with num > den = {np.count_nonzero(bad)}")
+
+        for idx in np.argwhere(bad):
+            idx = tuple(idx)
+            print(
+                f"  bin {idx}: "
+                f"num={num[idx]:.8f}, "
+                f"den={den[idx]:.8f}, "
+                f"ratio={ratio[idx]:.8f}"
+            )
+
+    diagnose_efficiency_pair(
+        "acc_dimu",
+        hists["Reco_Dimu"],
+        hists["Gen_Dimu"],
+    )
+
+    diagnose_efficiency_pair(
+        "acc_dstar",
+        hists["Reco_Dstar"],
+        hists["Gen_Dstar"],
+    )
+
+    diagnose_efficiency_pair(
+        "eff_cuts_dimu",
+        hists["Cuts_Dimu"],
+        hists["Reco_Dimu"],
+    )
+
+    diagnose_efficiency_pair(
+        "eff_cuts_dstar",
+        hists["Cuts_Dstar"],
+        hists["Reco_Dstar"],
+    )
+
+    diagnose_efficiency_pair(
+        "eff_trigger",
+        hists["Trigger_Dimu"],
+        hists["Cuts_Dimu"],
+    )
+
+    diagnose_efficiency_pair(
+        "eff_asso_pt",
+        hists["Num_Asso"].project("pt_dimu", "pt_dstar"),
+        hists["Den_Asso"].project("pt_dimu", "pt_dstar"),
+    )
+
     acc_dimu_hist, acc_dimu_err_up, acc_dimu_err_down = create_eff_hists2D(
-        hists['Reco_Dimu'], 
+        hists['Reco_Dimu'],
         hists['Gen_Dimu'],
         (config['bins_pt_dimu'], config['bins_rap_dimu']),
         ('pt', 'rap'),
         (r'$p_{T, \mu^+\mu^-} [GeV/c]$', r'$|y_{\mu^+\mu^-}|$'),
+        statistics="ratio",
     )
     acc_dstar_hist, acc_dstar_err_up, acc_dstar_err_down = create_eff_hists2D(
-        hists['Reco_Dstar'], 
+        hists['Reco_Dstar'],
         hists['Gen_Dstar'],
         (config['bins_pt_dstar'], config['bins_rap_dstar']),
         ('pt', 'rap'),
         (r'$p_{T, D^*}$ [GeV/c]', r'$y_{D^*}$'),
+        statistics="ratio",
     )
     eff_cuts_dimu_hist, eff_cuts_dimu_err_up, eff_cuts_dimu_err_down = create_eff_hists2D(
         hists['Cuts_Dimu'], 
@@ -643,7 +842,17 @@ if __name__ == '__main__':
     print("\nWeighted effective-statistics summary:")
 
     for name, (num_hist, den_hist) in efficiency_pairs.items():
-        stats = weighted_efficiency_statistics(num_hist, den_hist)
+
+        if name in {"acc_dimu", "acc_dstar"}:
+            stats = weighted_ratio_statistics(
+                num_hist,
+                den_hist,
+            )
+        else:
+            stats = weighted_efficiency_statistics(
+                num_hist,
+                den_hist,
+            )
 
         edges = tuple(
             np.asarray(axis.edges, dtype=float)

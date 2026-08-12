@@ -86,18 +86,47 @@ def association(cand1, cand2):
     
     return asso
 
-def get_files(paths, pattern='.root', exclude=None):
+def get_files(paths, pattern='.root', exclude=None, recursive=False):
     files = []
+
     for path in paths:
-        for it in os.scandir(path):
-            exclude_file = True
-            if it.name.find(pattern) > -1 and (it.stat().st_size != 0):
-                exclude_file = False
-                if not exclude == None:
-                    for e in exclude:
-                        if it.name.find(e) > -1: exclude_file = True
-            if not exclude_file: files.append(it.path)
+
+        if recursive:
+            candidates = []
+
+            for root, _, names in os.walk(path):
+                for name in names:
+                    candidates.append(
+                        os.path.join(root, name)
+                    )
+
+        else:
+            candidates = [
+                it.path
+                for it in os.scandir(path)
+                if it.is_file()
+            ]
+
+        for filepath in candidates:
+            name = os.path.basename(filepath)
+
+            if name.find(pattern) == -1:
+                continue
+
+            try:
+                if os.path.getsize(filepath) == 0:
+                    continue
+            except OSError:
+                continue
+
+            if exclude is not None:
+                if any(e in name for e in exclude):
+                    continue
+
+            files.append(filepath)
+
     files.sort(key=natural_keys)
+
     return files
 
 def save_kin_hists(hists, cand, gen=False, get_deltam=False):

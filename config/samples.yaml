@@ -37,6 +37,7 @@ samples:
     "2017":
       - path: /eos/user/s/sfonseca/LHE_SPS/jpsi_ccbar_25to100_3FS_SPS_2017_nanoaodplus
         dimu_cut: 25.0
+        recursive: true
     "2018": []
 
   SPS-bbbar:
@@ -45,4 +46,5 @@ samples:
     "2017":
       - path: /eos/user/s/sfonseca/LHE_SPS/jpsi_bbbar_25to100_3FS_SPS_2017_nanoaodplus
         dimu_cut: 25.0
+        recursive: true
     "2018": []
