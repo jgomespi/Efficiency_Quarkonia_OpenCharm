@@ -1,3 +1,13 @@
 *.root
 *.png
 logs/
+
+# Efficiency production outputs
+output/efficiency/
+logs/
+
+# Python/runtime artifacts
+__pycache__/
+*.py[cod]
+core
+core.*
