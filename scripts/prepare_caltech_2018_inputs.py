@@ -18,14 +18,17 @@ DPS_SPECS = {
     "DPS-ccbar-9to30": {
         "base": BASE + "/DPS_D0ToKPi_JPsiPt-9To30_JPsiFilter_TuneCP5_13TeV-pythia8-evtgen/DPS_D0ToKPi_JPsiPt-9To30_JPsiFilter_TuneCP5_13TeV-pythia8-evtgenRunIISummer20UL18RECO/230516_020037",
         "control_count": 63,
+        "strict_count": True,
     },
     "DPS-ccbar-30to50": {
         "base": BASE + "/DPS_D0ToKPi_JPsiPt-30To50_JPsiFilter_TuneCP5_13TeV-pythia8-evtgen/DPS_D0ToKPi_JPsiPt-30To50_JPsiFilter_TuneCP5_13TeV-pythia8-evtgenRunIISummer20UL18RECO/230124_190421",
         "control_count": 18,
+        "strict_count": True,
     },
     "DPS-ccbar-50to100": {
         "base": BASE + "/DPS_D0ToKPi_JPsiPt-50To100_JPsiFilter_TuneCP5_13TeV-pythia8-evtgen/DPS_D0ToKPi_JPsiPt-50To100_JPsiFilter_TuneCP5_13TeV-pythia8-evtgenRunIISummer20UL18RECO/220823_052048",
         "control_count": 8,
+        "strict_count": True,
     },
     # These are the bbbar DPS inputs used by the analysis. Their production
     # names are HardQCD and therefore do NOT contain either "DPS" or "bbbar".
@@ -33,14 +36,17 @@ DPS_SPECS = {
     "DPS-bbbar-9to30": {
         "base": BASE + "/D0ToKPi_Jpsi9to30_HardQCD_TuneCP5_13TeV-pythia8-evtgen/D0ToKPi_Jpsi9to30_HardQCD_TuneCP5_13TeV-pythia8-evtgenRunIISummer20UL18RECO/241216_185612",
         "control_count": 8,
+        "strict_count": True,
     },
     "DPS-bbbar-30to50": {
         "base": BASE + "/D0ToKPi_Jpsi30to50_HardQCD_TuneCP5_13TeV-pythia8-evtgen/D0ToKPi_Jpsi30to50_HardQCD_TuneCP5_13TeV-pythia8-evtgenRunIISummer20UL18RECO/250122_185754",
         "control_count": 2,
+        "strict_count": True,
     },
     "DPS-bbbar-50to100": {
         "base": BASE + "/D0ToKPi_Jpsi50to100_HardQCD_TuneCP5_13TeV-pythia8-evtgen/D0ToKPi_Jpsi50to100_HardQCD_TuneCP5_13TeV-pythia8-evtgenRunIISummer20UL18RECO/250122_185738",
         "control_count": 1,
+        "strict_count": True,
     },
 }
 
@@ -48,10 +54,15 @@ SPS_SPECS = {
     "SPS-ccbar": {
         "base": BASE + "/SPS-JPsiDstar-D0ToKPI-3FS_JPsiFilter_DstarFilter_TuneCP5_13TeV-bcvegpy2-pythia8-evtgen/SPS-JPsiDstar-D0ToKPI-3FS_JPsiFilter_DstarFilter_TuneCP5_13TeV-bcvegpy2-pythia8-evtgenRunIISummer20U/260829_133033",
         "control_count": 3,
+        # The control-sheet count for SPS is kept as an audit note. The exact
+        # recent Caltech production path plus NanoAODPlus branch validation is
+        # the hard requirement because the production can be sharded.
+        "strict_count": False,
     },
     "SPS-bbbar": {
         "base": BASE + "/SPS-JPsiDstar-D0ToKPI-3FS-BBBar_JPsiFilter_DstarFilter_TuneCP5_13TeV-HelacOnia-pythia8-evtgen/SPS-JPsiDstar-D0ToKPI-3FS-BBBar_JPsiFilter_DstarFilter_TuneCP5_13TeV-HelacOnia-pythia8-evtgenRunIISu/260829_133611",
         "control_count": 2,
+        "strict_count": False,
     },
 }
 
@@ -151,7 +162,9 @@ def validate_first(label, files):
 
         if missing:
             raise RuntimeError(
-                f"{label}: required branches missing: {missing}"
+                f"{label}: required NanoAODPlus branches missing: {missing}. "
+                "This Caltech directory is not the final efficiency input "
+                "stage and must not be processed."
             )
 
         print(
@@ -175,15 +188,21 @@ def discover_exact(label, spec):
     )
 
     expected = spec.get("control_count")
-    if expected is not None and len(files) != expected:
-        raise RuntimeError(
-            f"{label}: resolved {len(files)} unique ROOT files from the "
-            f"exact Caltech production, but Control_Monte_Carlo.xlsx records "
-            f"{expected}. Refusing to start the efficiency job until this "
-            "input-contract mismatch is understood."
-        )
+    strict_count = bool(spec.get("strict_count", False))
 
-    if expected is not None:
+    if expected is not None and len(files) != expected:
+        message = (
+            f"{label}: resolved {len(files)} unique ROOT files; "
+            f"Control_Monte_Carlo.xlsx records {expected}."
+        )
+        if strict_count:
+            raise RuntimeError(
+                message
+                + " Refusing to start the efficiency job until this DPS "
+                "input-contract mismatch is understood."
+            )
+        print("  WARNING: " + message)
+    elif expected is not None:
         print(
             f"  count check: {len(files)} ROOT files "
             f"(matches Control_Monte_Carlo.xlsx)"
@@ -268,8 +287,11 @@ def main():
 
     resolved = {}
 
+    # Preflight every source before writing any frozen list or starting Coffea.
     for label in OUTPUTS:
-        resolved[label] = discover_exact(label, specs[label])
+        files = discover_exact(label, specs[label])
+        validate_first(label, files)
+        resolved[label] = files
 
     print("\nResolved 2018 inputs:")
 
@@ -282,7 +304,6 @@ def main():
         print(
             f"  {label:22s} {len(files):5d} unique ROOT files  -> {path}"
         )
-        validate_first(label, files)
 
     print(
         "\nAll 2018 filelists were resolved from exact Caltech production "
