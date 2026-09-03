@@ -11,21 +11,48 @@ REDIRECTOR = "k8s-redir.ultralight.org:1094"
 BASE = "/store/group/uerj/mabarros"
 OUTDIR = Path("inputs/caltech")
 
-SPS_SPECS = {
-    "SPS-ccbar": {
-        "base": BASE + "/SPS-JPsiDstar-D0ToKPI-3FS_JPsiFilter_DstarFilter_TuneCP5_13TeV-bcvegpy2-pythia8-evtgen",
-        "tag": "260829_133033",
+# Exact 2018 Caltech production directories from Control_Monte_Carlo.xlsx.
+# Using exact production timestamps is intentional: do not infer the year from
+# ROOT filenames and do not recursively scan the whole /store/group area.
+DPS_SPECS = {
+    "DPS-ccbar-9to30": {
+        "base": BASE + "/DPS_D0ToKPi_JPsiPt-9To30_JPsiFilter_TuneCP5_13TeV-pythia8-evtgen/DPS_D0ToKPi_JPsiPt-9To30_JPsiFilter_TuneCP5_13TeV-pythia8-evtgenRunIISummer20UL18RECO/230516_020037",
+        "control_count": 63,
     },
-    "SPS-bbbar": {
-        "base": BASE + "/SPS-JPsiDstar-D0ToKPI-3FS-BBBar_JPsiFilter_DstarFilter_TuneCP5_13TeV-HelacOnia-pythia8-evtgen",
-        "tag": "260829_133611",
+    "DPS-ccbar-30to50": {
+        "base": BASE + "/DPS_D0ToKPi_JPsiPt-30To50_JPsiFilter_TuneCP5_13TeV-pythia8-evtgen/DPS_D0ToKPi_JPsiPt-30To50_JPsiFilter_TuneCP5_13TeV-pythia8-evtgenRunIISummer20UL18RECO/230124_190421",
+        "control_count": 18,
+    },
+    "DPS-ccbar-50to100": {
+        "base": BASE + "/DPS_D0ToKPi_JPsiPt-50To100_JPsiFilter_TuneCP5_13TeV-pythia8-evtgen/DPS_D0ToKPi_JPsiPt-50To100_JPsiFilter_TuneCP5_13TeV-pythia8-evtgenRunIISummer20UL18RECO/220823_052048",
+        "control_count": 8,
+    },
+    # These are the bbbar DPS inputs used by the analysis. Their production
+    # names are HardQCD and therefore do NOT contain either "DPS" or "bbbar".
+    # This is why heuristic catalog matching failed previously.
+    "DPS-bbbar-9to30": {
+        "base": BASE + "/D0ToKPi_Jpsi9to30_HardQCD_TuneCP5_13TeV-pythia8-evtgen/D0ToKPi_Jpsi9to30_HardQCD_TuneCP5_13TeV-pythia8-evtgenRunIISummer20UL18RECO/241216_185612",
+        "control_count": 8,
+    },
+    "DPS-bbbar-30to50": {
+        "base": BASE + "/D0ToKPi_Jpsi30to50_HardQCD_TuneCP5_13TeV-pythia8-evtgen/D0ToKPi_Jpsi30to50_HardQCD_TuneCP5_13TeV-pythia8-evtgenRunIISummer20UL18RECO/250122_185754",
+        "control_count": 2,
+    },
+    "DPS-bbbar-50to100": {
+        "base": BASE + "/D0ToKPi_Jpsi50to100_HardQCD_TuneCP5_13TeV-pythia8-evtgen/D0ToKPi_Jpsi50to100_HardQCD_TuneCP5_13TeV-pythia8-evtgenRunIISummer20UL18RECO/250122_185738",
+        "control_count": 1,
     },
 }
 
-DPS_CCBAR_BASES = {
-    "9to30": BASE + "/DPS_D0ToKPi_JPsiPt-9To30_JPsiFilter_TuneCP5_13TeV-pythia8-evtgen",
-    "30to50": BASE + "/DPS_D0ToKPi_JPsiPt-30To50_JPsiFilter_TuneCP5_13TeV-pythia8-evtgen",
-    "50to100": BASE + "/DPS_D0ToKPi_JPsiPt-50To100_JPsiFilter_TuneCP5_13TeV-pythia8-evtgen",
+SPS_SPECS = {
+    "SPS-ccbar": {
+        "base": BASE + "/SPS-JPsiDstar-D0ToKPI-3FS_JPsiFilter_DstarFilter_TuneCP5_13TeV-bcvegpy2-pythia8-evtgen/SPS-JPsiDstar-D0ToKPI-3FS_JPsiFilter_DstarFilter_TuneCP5_13TeV-bcvegpy2-pythia8-evtgenRunIISummer20U/260829_133033",
+        "control_count": 3,
+    },
+    "SPS-bbbar": {
+        "base": BASE + "/SPS-JPsiDstar-D0ToKPI-3FS-BBBar_JPsiFilter_DstarFilter_TuneCP5_13TeV-HelacOnia-pythia8-evtgen/SPS-JPsiDstar-D0ToKPI-3FS-BBBar_JPsiFilter_DstarFilter_TuneCP5_13TeV-HelacOnia-pythia8-evtgenRunIISu/260829_133611",
+        "control_count": 2,
+    },
 }
 
 OUTPUTS = {
@@ -40,7 +67,7 @@ OUTPUTS = {
 }
 
 
-def xrdfs_ls(base, recursive=True, allow_missing=False):
+def xrdfs_ls(base, recursive=True):
     cmd = ["xrdfs", REDIRECTOR, "ls"]
     if recursive:
         cmd.append("-R")
@@ -53,8 +80,6 @@ def xrdfs_ls(base, recursive=True, allow_missing=False):
     )
 
     if completed.returncode != 0:
-        if allow_missing:
-            return []
         raise RuntimeError(
             "XRootD listing failed:\n"
             + " ".join(cmd)
@@ -62,7 +87,11 @@ def xrdfs_ls(base, recursive=True, allow_missing=False):
             + completed.stderr.strip()
         )
 
-    return [line.strip() for line in completed.stdout.splitlines() if line.strip()]
+    return [
+        line.strip()
+        for line in completed.stdout.splitlines()
+        if line.strip()
+    ]
 
 
 def canonical_url(path):
@@ -72,20 +101,28 @@ def canonical_url(path):
         if slash < 0:
             raise ValueError(f"Malformed ROOT URL: {path}")
         path = payload[slash:]
+
     logical = "/" + path.lstrip("/")
     return f"root://{REDIRECTOR}//{logical.lstrip('/')}"
 
 
 def unique_root_urls(paths):
+    """Deduplicate physical replicas by logical /store path."""
     logical = set()
+
     for path in paths:
         if not path.endswith(".root"):
             continue
+
         if path.startswith("root://"):
             payload = path.split("://", 1)[1]
             slash = payload.find("/")
+            if slash < 0:
+                continue
             path = payload[slash:]
+
         logical.add("/" + path.lstrip("/"))
+
     return [canonical_url(path) for path in sorted(logical)]
 
 
@@ -98,135 +135,81 @@ def require_nonempty(label, files):
 def validate_first(label, files):
     first = files[0]
     print(f"  validating {label}: {first}")
+
     with uproot.open(first) as root_file:
         if "Events" not in root_file:
-            raise RuntimeError(f"{label}: Events tree missing in {first}")
+            raise RuntimeError(
+                f"{label}: Events tree missing in {first}"
+            )
+
         tree = root_file["Events"]
         required = ("Dimu_pt", "Dstar_pt", "GenPart_pt")
-        missing = [name for name in required if name not in tree.keys()]
-        if missing:
-            raise RuntimeError(f"{label}: required branches missing: {missing}")
-        print(f"    entries={tree.num_entries}, branches={len(tree.keys())}")
-
-
-def discover_sps(label, base, tag):
-    listed = xrdfs_ls(base, recursive=True)
-    files = unique_root_urls(
-        path for path in listed
-        if f"/{tag}/" in path and "/failed/" not in path
-    )
-    return require_nonempty(label, files)
-
-
-def discover_dps_ccbar(slice_name, base):
-    listed = xrdfs_ls(base, recursive=True)
-    roots = unique_root_urls(listed)
-
-    # The official DPS-ccbar NanoAODPlus inputs are named by the UL RECO
-    # campaign. Require UL18 explicitly so files from another year can never
-    # enter just because a numeric ROOT suffix happens to contain 2018.
-    selected = [
-        path for path in roots
-        if "RunIISummer20UL18RECO" in path
-        and "/failed/" not in path
-    ]
-
-    if not selected:
-        # Some productions omit the RECO token but retain UL18 in the path.
-        selected = [
-            path for path in roots
-            if "RunIISummer20UL18" in path
-            and "/failed/" not in path
+        missing = [
+            name for name in required
+            if name not in tree.keys()
         ]
 
-    return require_nonempty(f"DPS-ccbar {slice_name}", selected)
+        if missing:
+            raise RuntimeError(
+                f"{label}: required branches missing: {missing}"
+            )
 
-
-def find_bbbar_search_roots():
-    top = xrdfs_ls(BASE, recursive=False)
-    candidates = []
-
-    for entry in top:
-        name = entry.rstrip("/").split("/")[-1].lower()
-        if "2018" not in name:
-            continue
-        if "dps" in name or "ccbarxbbbar" in name:
-            candidates.append(entry)
-
-    guessed = [
-        BASE + "/CRAB_PrivateMC_RunII_UL_2018_ccbarxbbbar",
-        BASE + "/CRAB_PrivateMC_RunII_UL_2018_DPS_bbbar",
-        BASE + "/CRAB_PrivateMC_RunII_UL_2018_DPS_bbbar_xsec",
-    ]
-
-    for path in guessed:
-        if path not in candidates and xrdfs_ls(path, recursive=False, allow_missing=True):
-            candidates.append(path)
-
-    return sorted(set(candidates))
-
-
-def bbbar_match(path, slice_name):
-    lower = path.lower()
-    slice_token = slice_name.lower()
-
-    if "dps" not in lower or "bbbar" not in lower or slice_token not in lower:
-        return False
-
-    # Strong year identification. This deliberately rejects the old 2017
-    # production whose individual file names may end in *_2018.root.
-    year_tokens = (
-        "dps_bbbar_2018_13tev",
-        "runii_ul_2018",
-        "runiiul18",
-        "summer20ul18",
-    )
-    if not any(token in lower for token in year_tokens):
-        return False
-
-    final_stage_tokens = (
-        "nanoaodplus",
-        "ul18reco",
-    )
-    return any(token in lower for token in final_stage_tokens)
-
-
-def discover_dps_bbbar():
-    search_roots = find_bbbar_search_roots()
-    all_paths = []
-
-    if search_roots:
-        print("DPS-bbbar 2018 candidate top-level collections:")
-        for root in search_roots:
-            print(" ", root)
-            all_paths.extend(xrdfs_ls(root, recursive=True))
-    else:
         print(
-            "No dedicated 2018 DPS-bbbar top-level collection was found; "
-            "falling back to one recursive catalog scan under " + BASE
-        )
-        all_paths = xrdfs_ls(BASE, recursive=True)
-
-    roots = unique_root_urls(all_paths)
-    result = {}
-
-    for slice_name in ("9to30", "30to50", "50to100"):
-        selected = [path for path in roots if bbbar_match(path, slice_name)]
-        result[slice_name] = require_nonempty(
-            f"DPS-bbbar {slice_name}",
-            selected,
+            f"    entries={tree.num_entries}, "
+            f"branches={len(tree.keys())}"
         )
 
-    return result
+
+def discover_exact(label, spec):
+    base = spec["base"]
+    print(f"Discovering {label} from exact production:")
+    print(f"  {base}")
+
+    listed = xrdfs_ls(base, recursive=True)
+    files = require_nonempty(
+        label,
+        unique_root_urls(
+            path for path in listed
+            if "/failed/" not in path
+        ),
+    )
+
+    expected = spec.get("control_count")
+    if expected is not None:
+        if len(files) == expected:
+            print(
+                f"  count check: {len(files)} ROOT files "
+                f"(matches Control_Monte_Carlo.xlsx)"
+            )
+        else:
+            # The spreadsheet count is provenance/audit information, not a
+            # hard processing cut. The exact production path + branch check
+            # determine the actual frozen input set.
+            print(
+                f"  WARNING: resolved {len(files)} unique ROOT files; "
+                f"Control_Monte_Carlo.xlsx records {expected}. "
+                "The exact production path will be frozen and the mismatch "
+                "must be reviewed before calling the result final."
+            )
+
+    return files
 
 
-def write_filelist(path, label, files):
+def write_filelist(path, label, spec, files):
     path.parent.mkdir(parents=True, exist_ok=True)
+
     text = [
         f"# {label}",
         f"# redirector={REDIRECTOR}",
+        f"# production={spec['base']}",
         f"# n_files={len(files)}",
     ]
+
+    if spec.get("control_count") is not None:
+        text.append(
+            f"# control_monte_carlo_count={spec['control_count']}"
+        )
+
     text.extend(files)
     path.write_text("\n".join(text) + "\n")
 
@@ -235,59 +218,79 @@ def read_filelist(path):
     return [
         line.strip()
         for line in path.read_text().splitlines()
-        if line.strip() and not line.lstrip().startswith("#")
+        if line.strip()
+        and not line.lstrip().startswith("#")
     ]
 
 
 def all_existing():
-    return all(path.is_file() and read_filelist(path) for path in OUTPUTS.values())
+    return all(
+        path.is_file() and read_filelist(path)
+        for path in OUTPUTS.values()
+    )
+
+
+def combined_specs():
+    result = {}
+    result.update(DPS_SPECS)
+    result.update(SPS_SPECS)
+    return result
 
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Discover and freeze the complete 2018 Caltech efficiency inputs."
+        description=(
+            "Resolve and freeze the exact 2018 Caltech efficiency inputs "
+            "listed in Control_Monte_Carlo.xlsx."
+        )
     )
     parser.add_argument(
         "--reuse-existing",
         action="store_true",
-        help="Reuse already frozen non-empty filelists instead of querying Caltech again.",
+        help=(
+            "Reuse already frozen non-empty filelists instead of querying "
+            "Caltech again."
+        ),
     )
     args = parser.parse_args()
 
     OUTDIR.mkdir(parents=True, exist_ok=True)
+    specs = combined_specs()
 
     if args.reuse_existing and all_existing():
         print("Reusing frozen 2018 Caltech input filelists:")
+
         for label, path in OUTPUTS.items():
             files = read_filelist(path)
-            print(f"  {label:22s} {len(files):5d} ROOT files  {path}")
+            print(
+                f"  {label:22s} {len(files):5d} ROOT files  {path}"
+            )
             validate_first(label, files)
+
         return
 
     resolved = {}
 
-    for slice_name, base in DPS_CCBAR_BASES.items():
-        label = f"DPS-ccbar-{slice_name}"
-        print(f"Discovering {label} from {base}")
-        resolved[label] = discover_dps_ccbar(slice_name, base)
-
-    bbbar = discover_dps_bbbar()
-    for slice_name, files in bbbar.items():
-        resolved[f"DPS-bbbar-{slice_name}"] = files
-
-    for label, spec in SPS_SPECS.items():
-        print(f"Discovering {label} tag {spec['tag']} from {spec['base']}")
-        resolved[label] = discover_sps(label, spec["base"], spec["tag"])
+    for label in OUTPUTS:
+        resolved[label] = discover_exact(label, specs[label])
 
     print("\nResolved 2018 inputs:")
-    for label in OUTPUTS:
+
+    for label, path in OUTPUTS.items():
         files = resolved[label]
-        path = OUTPUTS[label]
-        write_filelist(path, label, files)
-        print(f"  {label:22s} {len(files):5d} unique ROOT files  -> {path}")
+        spec = specs[label]
+
+        write_filelist(path, label, spec, files)
+
+        print(
+            f"  {label:22s} {len(files):5d} unique ROOT files  -> {path}"
+        )
         validate_first(label, files)
 
-    print("\nAll 2018 filelists were resolved, de-duplicated by logical file name, validated, and frozen.")
+    print(
+        "\nAll 2018 filelists were resolved from exact Caltech production "
+        "paths, de-duplicated by logical file name, validated, and frozen."
+    )
 
 
 if __name__ == "__main__":
