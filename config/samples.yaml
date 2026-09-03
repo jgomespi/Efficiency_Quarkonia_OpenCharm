@@ -9,10 +9,12 @@
 # productions/tape recalls are in progress. When they become available,
 # only this file needs to be extended; the driver already supports them.
 #
-# 2018 policy: scripts/prepare_caltech_2018_inputs.py discovers the
-# Caltech datasets, de-duplicates XRootD replicas by logical file name,
-# validates the first ROOT of every sample, and freezes the exact URLs in
-# inputs/caltech/*.txt. The physics driver consumes only those frozen lists.
+# 2018 policy: scripts/prepare_caltech_2018_inputs.py resolves the exact
+# configured Caltech CRAB terminal folders, de-duplicates logical ROOT paths,
+# validates representative ROOTs for the NanoAODPlus analysis branches, and
+# freezes the exact URLs in inputs/caltech/*.txt. The physics driver consumes
+# only those frozen lists. File multiplicities are discovered at runtime and
+# are not hard-coded here.
 
 samples:
 
