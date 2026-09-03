@@ -6,6 +6,9 @@ logs/
 output/efficiency/
 logs/
 
+# Generated remote input lists
+inputs/caltech/*.txt
+
 # Python/runtime artifacts
 __pycache__/
 *.py[cod]
