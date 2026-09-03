@@ -4,6 +4,7 @@ import uproot
 from hist.intervals import ratio_uncertainty
 from scipy.stats import beta
 import pathlib
+import subprocess
 
 from coffea.nanoevents import BaseSchema
 
@@ -68,11 +69,124 @@ def get_sample_specs(mc_type, year):
     return specs
 
 
+def discover_xrootd_files(spec):
+    """Resolve a Caltech/XRootD sample to an explicit list of ROOT URLs."""
+    xrd = spec['xrootd']
+    redirector = xrd.get('redirector', 'k8s-redir.ultralight.org:1094')
+    base = xrd['base']
+    include = [str(item) for item in xrd.get('include', [])]
+    exclude_terms = [str(item) for item in xrd.get('exclude', [])]
+
+    cmd = ['xrdfs', redirector, 'ls', '-R', '-u', base]
+    print('Discovering remote files with:')
+    print('  ' + ' '.join(cmd))
+
+    completed = subprocess.run(
+        cmd,
+        check=True,
+        text=True,
+        capture_output=True,
+    )
+
+    files = []
+    for line in completed.stdout.splitlines():
+        path = line.strip()
+        if not path.endswith('.root'):
+            continue
+        if include and not all(token in path for token in include):
+            continue
+        if exclude_terms and any(token in path for token in exclude_terms):
+            continue
+        if any(token in pathlib.PurePosixPath(path).name for token in exclude):
+            continue
+        files.append(path)
+
+    files = sorted(set(files))
+
+    if not files:
+        raise RuntimeError(
+            'No ROOT files matched XRootD specification: '
+            f'redirector={redirector}, base={base}, include={include}, '
+            f'exclude={exclude_terms}'
+        )
+
+    return files
+
+
+def resolve_sample_files(spec):
+    """Resolve local/EOS paths, explicit filelists, or XRootD discovery specs."""
+    source_keys = [key for key in ('path', 'filelist', 'xrootd') if key in spec]
+    if len(source_keys) != 1:
+        raise ValueError(
+            'Each sample specification must define exactly one of '
+            "'path', 'filelist', or 'xrootd'."
+        )
+
+    source_key = source_keys[0]
+
+    if source_key == 'path':
+        path = spec['path']
+        recursive = bool(spec.get('recursive', False))
+
+        if not pathlib.Path(path).is_dir():
+            raise FileNotFoundError(
+                f'Input directory does not exist: {path}'
+            )
+
+        file_list = get_files(
+            [path],
+            exclude=exclude,
+            recursive=recursive,
+        )
+        source = path
+
+    elif source_key == 'filelist':
+        filelist = pathlib.Path(spec['filelist'])
+        if not filelist.is_file():
+            raise FileNotFoundError(
+                f'Input file list does not exist: {filelist}'
+            )
+
+        file_list = [
+            line.strip()
+            for line in filelist.read_text().splitlines()
+            if line.strip() and not line.lstrip().startswith('#')
+        ]
+        source = f'filelist:{filelist}'
+
+    else:
+        file_list = discover_xrootd_files(spec)
+        xrd = spec['xrootd']
+        source = (
+            f"xrootd:{xrd.get('redirector', 'k8s-redir.ultralight.org:1094')}"
+            f":{xrd['base']}"
+        )
+
+    if not file_list:
+        raise RuntimeError(f'No ROOT files found for {source}')
+
+    return source, file_list
+
+
+def write_input_manifest(mc_type, year, samples):
+    manifest_dir = pathlib.Path('output/efficiency/input_manifests')
+    manifest_dir.mkdir(parents=True, exist_ok=True)
+    manifest = manifest_dir / f'{mc_type}_{year}.txt'
+
+    lines = []
+    for source, sample_cut, file_list in samples:
+        lines.append(f'# source={source} dimu_cut={sample_cut:g}')
+        lines.extend(file_list)
+
+    manifest.write_text('\n'.join(lines) + '\n')
+    print(f'Input manifest written to: {manifest}')
+    return manifest
+
+
 exclude = [
     'DPS_D0ToKPi_JPsiPt-50To100_JPsiFilter_TuneCP5_13TeV-pythia8-evtgenRunIISummer20UL16RECO_41.root',
     'Jpsi_25to100_Dstar_SPS_bbbar_3FS_2017_13TeV_NanoAODPlus_1037.root',
 ]
-
 
 
 
@@ -413,6 +527,12 @@ if __name__ == '__main__':
         help="Skip NanoAOD processing and load the merged histogram cache.",
     )
 
+    parser.add_argument(
+        "--list-inputs",
+        action="store_true",
+        help="Resolve configured inputs, write the manifest, print them, and exit.",
+    )
+
     args = parser.parse_args()
 
     year = args.year
@@ -447,8 +567,6 @@ if __name__ == '__main__':
 
         for spec in specs:
 
-            path = spec["path"]
-
             sample_cut = float(
                 spec.get(
                     "dimu_cut",
@@ -456,44 +574,32 @@ if __name__ == '__main__':
                 )
             )
 
-            recursive = bool(
-                spec.get("recursive", False)
-            )
-
-            if not pathlib.Path(path).is_dir():
-                raise FileNotFoundError(
-                    f"Input directory does not exist: {path}"
-                )
-
-            file_list = get_files(
-                [path],
-                exclude=exclude,
-                recursive=recursive,
-            )
-
-            if not file_list:
-                raise RuntimeError(
-                    f"No non-empty ROOT files found in: {path}"
-                )
+            source, file_list = resolve_sample_files(spec)
 
             samples.append(
-                (path, sample_cut, file_list)
+                (source, sample_cut, file_list)
             )
 
         print(f"MC component: {mc_type}")
         print(f"Year: {year}")
 
-        for path, sample_cut, file_list in samples:
+        for source, sample_cut, file_list in samples:
             print(
                 f"  {len(file_list):4d} ROOT files | "
                 f"dimu_cut={sample_cut:g} GeV | "
-                f"{path}"
+                f"{source}"
             )
+
+        manifest = write_input_manifest(mc_type, year, samples)
+
+        if args.list_inputs:
+            print(manifest.read_text())
+            raise SystemExit(0)
 
         output = []
         tstart = time.time()
 
-        for path, sample_cut, file_list in samples:
+        for source, sample_cut, file_list in samples:
 
             data = {
                 "test": file_list[:]
@@ -519,7 +625,7 @@ if __name__ == '__main__':
                     executor_args={
                         "schema": BaseSchema,
                         "workers": args.workers,
-                        "skipbadfiles": True,
+                        "skipbadfiles": False,
                     },
                     chunksize=360000,
                 )
@@ -530,150 +636,36 @@ if __name__ == '__main__':
             f"{time.time() - tstart:.2f} s"
         )
 
+        # Merge the hists
+        hists = {}
+
+        keys_to_merge = [
+            'Gen_Dimu',
+            'Reco_Dimu',
+            'Gen_Dstar',
+            'Reco_Dstar',
+            'Cuts_Dimu',
+            'Cuts_Dstar',
+            'Trigger_Dimu',
+            'Num_Asso',
+            'Den_Asso',
+        ]
+
         nevt = 0
 
         for out in output:
-            nevt += out["cutflow"]["Number of events"]
+            nevt += out['cutflow']['Number of events']
+
+            for key in keys_to_merge:
+                if key not in hists:
+                    hists[key] = out[key].copy()
+                else:
+                    hists[key] += out[key]
 
         print(f"Number of events: {nevt}")
 
-        hists = {}
-
-        keys = [
-            "Gen_Dimu",
-            "Reco_Dimu",
-            "Gen_Dstar",
-            "Reco_Dstar",
-            "Cuts_Dimu",
-            "Cuts_Dstar",
-            "Trigger_Dimu",
-            "Num_Asso",
-            "Den_Asso",
-        ]
-
-        for i, out in enumerate(output):
-
-            if i == 0:
-                for key in keys:
-                    hists[key] = out[key]
-
-            else:
-                for key in keys:
-                    hists[key] += out[key]
-
-        coffea_save(
-            hists,
-            str(cache_file),
-        )
-
-        print(
-            f"Merged histograms saved to: "
-            f"{cache_file}"
-        )
-
-    # Integrated summary for validation against AN Table 25
-    def integral(histogram):
-        return float(np.sum(histogram.values(flow=False)))
-
-    integrated_efficiencies = {
-        'acc_dimu': (
-            integral(hists['Reco_Dimu']) /
-            integral(hists['Gen_Dimu'])
-        ),
-        'acc_dstar': (
-            integral(hists['Reco_Dstar']) /
-            integral(hists['Gen_Dstar'])
-        ),
-        'eff_cuts_dstar': (
-            integral(hists['Cuts_Dstar']) /
-            integral(hists['Reco_Dstar'])
-        ),
-        'eff_cuts_dimu': (
-            integral(hists['Cuts_Dimu']) /
-            integral(hists['Reco_Dimu'])
-        ),
-        'eff_trigger': (
-            integral(hists['Trigger_Dimu']) /
-            integral(hists['Cuts_Dimu'])
-        ),
-        'eff_asso_pt': (
-            integral(hists['Num_Asso']) /
-            integral(hists['Den_Asso'])
-        ),
-    }
-
-    integrated_efficiencies['global'] = np.prod([
-        integrated_efficiencies['acc_dimu'],
-        integrated_efficiencies['acc_dstar'],
-        integrated_efficiencies['eff_cuts_dstar'],
-        integrated_efficiencies['eff_cuts_dimu'],
-        integrated_efficiencies['eff_trigger'],
-        integrated_efficiencies['eff_asso_pt'],
-    ])
-
-    print("\nIntegrated efficiencies for AN Table 25 comparison:")
-    for name, value in integrated_efficiencies.items():
-        print(f"{name:20s}: {value:.8f}")
-    print()
-
-    def diagnose_efficiency_pair(name, num_hist, den_hist):
-        num = np.asarray(num_hist.values(flow=False), dtype=float)
-        den = np.asarray(den_hist.values(flow=False), dtype=float)
-
-        valid = den > 0
-        ratio = np.full_like(den, np.nan)
-        ratio[valid] = num[valid] / den[valid]
-
-        bad = valid & (num > den)
-
-        print(f"\n===== {name} =====")
-        print(f"max(num/den) = {np.nanmax(ratio):.8f}")
-        print(f"bins with num > den = {np.count_nonzero(bad)}")
-
-        for idx in np.argwhere(bad):
-            idx = tuple(idx)
-            print(
-                f"  bin {idx}: "
-                f"num={num[idx]:.8f}, "
-                f"den={den[idx]:.8f}, "
-                f"ratio={ratio[idx]:.8f}"
-            )
-
-    diagnose_efficiency_pair(
-        "acc_dimu",
-        hists["Reco_Dimu"],
-        hists["Gen_Dimu"],
-    )
-
-    diagnose_efficiency_pair(
-        "acc_dstar",
-        hists["Reco_Dstar"],
-        hists["Gen_Dstar"],
-    )
-
-    diagnose_efficiency_pair(
-        "eff_cuts_dimu",
-        hists["Cuts_Dimu"],
-        hists["Reco_Dimu"],
-    )
-
-    diagnose_efficiency_pair(
-        "eff_cuts_dstar",
-        hists["Cuts_Dstar"],
-        hists["Reco_Dstar"],
-    )
-
-    diagnose_efficiency_pair(
-        "eff_trigger",
-        hists["Trigger_Dimu"],
-        hists["Cuts_Dimu"],
-    )
-
-    diagnose_efficiency_pair(
-        "eff_asso_pt",
-        hists["Num_Asso"].project("pt_dimu", "pt_dstar"),
-        hists["Den_Asso"].project("pt_dimu", "pt_dstar"),
-    )
+        print(f"Saving merged histogram cache to: {cache_file}")
+        coffea_save(hists, str(cache_file))
 
     acc_dimu_hist, acc_dimu_err_up, acc_dimu_err_down = create_eff_hists2D(
         hists['Reco_Dimu'],
@@ -683,362 +675,265 @@ if __name__ == '__main__':
         (r'$p_{T, \mu^+\mu^-} [GeV/c]$', r'$|y_{\mu^+\mu^-}|$'),
         statistics="ratio",
     )
+
     acc_dstar_hist, acc_dstar_err_up, acc_dstar_err_down = create_eff_hists2D(
         hists['Reco_Dstar'],
         hists['Gen_Dstar'],
         (config['bins_pt_dstar'], config['bins_rap_dstar']),
         ('pt', 'rap'),
-        (r'$p_{T, D^*}$ [GeV/c]', r'$y_{D^*}$'),
+        (r'$p_{T, D^*}$ [GeV/c]', r'$|y_{D^*}|$'),
         statistics="ratio",
     )
+
     eff_cuts_dimu_hist, eff_cuts_dimu_err_up, eff_cuts_dimu_err_down = create_eff_hists2D(
-        hists['Cuts_Dimu'], 
+        hists['Cuts_Dimu'],
         hists['Reco_Dimu'],
         (config['bins_pt_dimu'], config['bins_rap_dimu']),
         ('pt', 'rap'),
         (r'$p_{T, \mu^+\mu^-}$ [GeV/c]', r'$|y_{\mu^+\mu^-}|$'),
+        statistics="efficiency",
     )
+
     eff_cuts_dstar_hist, eff_cuts_dstar_err_up, eff_cuts_dstar_err_down = create_eff_hists2D(
-        hists['Cuts_Dstar'], 
+        hists['Cuts_Dstar'],
         hists['Reco_Dstar'],
         (config['bins_pt_dstar'], config['bins_rap_dstar']),
         ('pt', 'rap'),
-        (r'$p_{T, D^*}$ [GeV/c]', r'$y_{D^*}$'),
+        (r'$p_{T, D^*}$ [GeV/c]', r'$|y_{D^*}|$'),
+        statistics="efficiency",
     )
+
     eff_trigger_hist, eff_trigger_err_up, eff_trigger_err_down = create_eff_hists2D(
-        hists['Trigger_Dimu'], 
+        hists['Trigger_Dimu'],
         hists['Cuts_Dimu'],
         (config['bins_pt_dimu'], config['bins_rap_dimu']),
         ('pt', 'rap'),
         (r'$p_{T, \mu^+\mu^-}$ [GeV/c]', r'$|y_{\mu^+\mu^-}|$'),
+        statistics="efficiency",
     )
+
     eff_asso_pt_hist, eff_asso_pt_err_up, eff_asso_pt_err_down = create_eff_hists2D(
-        hists['Num_Asso'].project('pt_dimu', 'pt_dstar'), 
+        hists['Num_Asso'].project('pt_dimu', 'pt_dstar'),
         hists['Den_Asso'].project('pt_dimu', 'pt_dstar'),
         (config['bins_pt_dimu'], config['bins_pt_dstar']),
         ('pt_dimu', 'pt_dstar'),
         (r'$p_{T, \mu^+\mu^-}$ [GeV/c]', r'$p_{T, D^*}$ [GeV/c]'),
+        statistics="efficiency",
     )
+
     eff_asso_rap_hist, eff_asso_rap_err_up, eff_asso_rap_err_down = create_eff_hists2D(
-        hists['Num_Asso'].project('rap_dimu', 'rap_dstar'), 
+        hists['Num_Asso'].project('rap_dimu', 'rap_dstar'),
         hists['Den_Asso'].project('rap_dimu', 'rap_dstar'),
         (config['bins_rap_dimu'], config['bins_rap_dstar']),
         ('rap_dimu', 'rap_dstar'),
         (r'$|y_{\mu^+\mu^-}|$', r'$|y_{D^*}|$'),
+        statistics="efficiency",
     )
 
     # Save files to root
     pathlib.Path('output/efficiency').mkdir(parents=True, exist_ok=True)
-    eff_file = uproot.recreate(f'output/efficiency/efficiencies_'+ config['mc_type'] + '_' + config['out_name'] + '_' + config['category'] + f'_{year}.root')
-
-    acc_dimu_err_up_hist = (
-        Hist.new
-        .Variable(config['bins_pt_dimu'], name='pt_dimu', label=r'$p_{T, \mu^+\mu^-}$ [GeV/c]')
-        .Variable(config['bins_rap_dimu'], name='rap_dimu', label=r'$y_{\mu^+\mu^-}$')
-        .Double()
+    eff_file = uproot.recreate(
+        f'output/efficiency/efficiencies_{config["mc_type"]}_{config["out_name"]}_{config["category"]}_{year}.root'
     )
-    acc_dimu_err_down_hist = acc_dimu_err_up_hist.copy()
-    eff_cuts_dimu_err_up_hist = acc_dimu_err_up_hist.copy()
-    eff_cuts_dimu_err_down_hist = acc_dimu_err_up_hist.copy()
-    eff_trigger_err_up_hist = acc_dimu_err_up_hist.copy()
-    eff_trigger_err_down_hist = acc_dimu_err_up_hist.copy()
 
-    acc_dstar_err_up_hist = (
-        Hist.new
-        .Variable(config['bins_pt_dstar'], name='pt_dstar', label=r'$p_{T, \mu^+\mu^-}$ [GeV/c]')
-        .Variable(config['bins_rap_dstar'], name='rap_dstar', label=r'$y_{\mu^+\mu^-}$')
-        .Double()
-    )
-    acc_dstar_err_down_hist = acc_dstar_err_up_hist.copy()
-    eff_cuts_dstar_err_up_hist = acc_dstar_err_up_hist.copy()
-    eff_cuts_dstar_err_down_hist = acc_dstar_err_up_hist.copy()
-    
-    eff_asso_pt_err_up_hist = (
-        Hist.new
-        .Variable(config['bins_pt_dimu'], name='pt_dimu', label=r'$p_{T, \mu^+\mu^-}$ [GeV/c]')
-        .Variable(config['bins_pt_dstar'], name='pt_dstar', label=r'$p_{T, D^*}$ [GeV/c]')
-        .Double()
-    )
-    eff_asso_pt_err_down_hist = eff_asso_pt_err_up_hist.copy()
-    eff_asso_rap_err_up_hist = (
-        Hist.new
-        .Variable(config['bins_rap_dimu'], name='rap_dimu', label=r'$y_{\mu^+\mu^-}$')
-        .Variable(config['bins_rap_dstar'], name='rap_dstar', label=r'$y_{D^*}$')
-        .Double()
-    )
-    eff_asso_rap_err_down_hist = eff_asso_rap_err_up_hist.copy()
-    
-    acc_dimu_err_up_hist[...] = acc_dimu_err_up
-    acc_dimu_err_down_hist[...] = acc_dimu_err_down
-    acc_dstar_err_up_hist[...] = acc_dstar_err_up
-    acc_dstar_err_down_hist[...] = acc_dstar_err_down
-    eff_cuts_dimu_err_up_hist[...] = eff_cuts_dimu_err_up
-    eff_cuts_dimu_err_down_hist[...] = eff_cuts_dimu_err_down
-    eff_cuts_dstar_err_up_hist[...] = eff_cuts_dstar_err_up
-    eff_cuts_dstar_err_down_hist[...] = eff_cuts_dstar_err_down
-    eff_trigger_err_up_hist[...] = eff_trigger_err_up
-    eff_trigger_err_down_hist[...] = eff_trigger_err_down
-    eff_asso_pt_err_up_hist[...] = eff_asso_pt_err_up
-    eff_asso_pt_err_down_hist[...] = eff_asso_pt_err_down
-    eff_asso_rap_err_up_hist[...] = eff_asso_rap_err_up
-    eff_asso_rap_err_down_hist[...] = eff_asso_rap_err_down
-
-    eff_file['acc_dimu']                 = acc_dimu_hist.to_numpy()
-    eff_file['acc_dstar']                = acc_dstar_hist.to_numpy()
-    eff_file['eff_cuts_dimu']            = eff_cuts_dimu_hist.to_numpy()
-    eff_file['eff_cuts_dstar']           = eff_cuts_dstar_hist.to_numpy()
-    eff_file['eff_trigger']              = eff_trigger_hist.to_numpy()
-    eff_file['eff_asso_pt']              = eff_asso_pt_hist.to_numpy()
-    eff_file['eff_asso_rap']             = eff_asso_rap_hist.to_numpy()
-    eff_file['acc_dimu_err_up']          = acc_dimu_err_up_hist.to_numpy()
-    eff_file['acc_dimu_err_down']        = acc_dimu_err_down_hist.to_numpy()
-    eff_file['acc_dimu_err_down']        = acc_dimu_err_down_hist.to_numpy()
-    eff_file['acc_dstar_err_up']         = acc_dstar_err_up_hist.to_numpy()
-    eff_file['acc_dstar_err_down']       = acc_dstar_err_down_hist.to_numpy()
-    eff_file['eff_cuts_dimu_err_up']     = eff_cuts_dimu_err_up_hist.to_numpy()
-    eff_file['eff_cuts_dimu_err_down']   = eff_cuts_dimu_err_down_hist.to_numpy()
-    eff_file['eff_cuts_dstar_err_up']    = eff_cuts_dstar_err_up_hist.to_numpy()
-    eff_file['eff_cuts_dstar_err_down']  = eff_cuts_dstar_err_down_hist.to_numpy()
-    eff_file['eff_trigger_err_up']       = eff_trigger_err_up_hist.to_numpy()
-    eff_file['eff_trigger_err_down']     = eff_trigger_err_down_hist.to_numpy()
-    eff_file['eff_asso_pt_err_up']       = eff_asso_pt_err_up_hist.to_numpy()
-    eff_file['eff_asso_pt_err_down']     = eff_asso_pt_err_down_hist.to_numpy()
-    eff_file['eff_asso_rap_err_up']      = eff_asso_rap_err_up_hist.to_numpy()
-    eff_file['eff_asso_rap_err_down']    = eff_asso_rap_err_down_hist.to_numpy()
-
-
-    # Save weighted numerator/denominator statistics for reproducibility.
-    efficiency_pairs = {
-        "acc_dimu": (
-            hists["Reco_Dimu"],
-            hists["Gen_Dimu"],
+    efficiency_payload = {
+        'acc_dimu': (
+            acc_dimu_hist,
+            acc_dimu_err_up,
+            acc_dimu_err_down,
+            hists['Reco_Dimu'],
+            hists['Gen_Dimu'],
+            'ratio',
         ),
-        "acc_dstar": (
-            hists["Reco_Dstar"],
-            hists["Gen_Dstar"],
+        'acc_dstar': (
+            acc_dstar_hist,
+            acc_dstar_err_up,
+            acc_dstar_err_down,
+            hists['Reco_Dstar'],
+            hists['Gen_Dstar'],
+            'ratio',
         ),
-        "eff_cuts_dimu": (
-            hists["Cuts_Dimu"],
-            hists["Reco_Dimu"],
+        'eff_cuts_dimu': (
+            eff_cuts_dimu_hist,
+            eff_cuts_dimu_err_up,
+            eff_cuts_dimu_err_down,
+            hists['Cuts_Dimu'],
+            hists['Reco_Dimu'],
+            'efficiency',
         ),
-        "eff_cuts_dstar": (
-            hists["Cuts_Dstar"],
-            hists["Reco_Dstar"],
+        'eff_cuts_dstar': (
+            eff_cuts_dstar_hist,
+            eff_cuts_dstar_err_up,
+            eff_cuts_dstar_err_down,
+            hists['Cuts_Dstar'],
+            hists['Reco_Dstar'],
+            'efficiency',
         ),
-        "eff_trigger": (
-            hists["Trigger_Dimu"],
-            hists["Cuts_Dimu"],
+        'eff_trigger': (
+            eff_trigger_hist,
+            eff_trigger_err_up,
+            eff_trigger_err_down,
+            hists['Trigger_Dimu'],
+            hists['Cuts_Dimu'],
+            'efficiency',
         ),
-        "eff_asso_pt": (
-            hists["Num_Asso"].project("pt_dimu", "pt_dstar"),
-            hists["Den_Asso"].project("pt_dimu", "pt_dstar"),
+        'eff_asso_pt': (
+            eff_asso_pt_hist,
+            eff_asso_pt_err_up,
+            eff_asso_pt_err_down,
+            hists['Num_Asso'].project('pt_dimu', 'pt_dstar'),
+            hists['Den_Asso'].project('pt_dimu', 'pt_dstar'),
+            'efficiency',
         ),
-        "eff_asso_rap": (
-            hists["Num_Asso"].project("rap_dimu", "rap_dstar"),
-            hists["Den_Asso"].project("rap_dimu", "rap_dstar"),
+        'eff_asso_rap': (
+            eff_asso_rap_hist,
+            eff_asso_rap_err_up,
+            eff_asso_rap_err_down,
+            hists['Num_Asso'].project('rap_dimu', 'rap_dstar'),
+            hists['Den_Asso'].project('rap_dimu', 'rap_dstar'),
+            'efficiency',
         ),
     }
 
-    print("\nWeighted effective-statistics summary:")
+    def histogram_from_array(template, values):
+        result = template.copy()
+        result[...] = np.asarray(values, dtype=float)
+        return result
 
-    for name, (num_hist, den_hist) in efficiency_pairs.items():
+    for key, (
+        nominal,
+        err_up,
+        err_down,
+        hist_num,
+        hist_den,
+        statistics_mode,
+    ) in efficiency_payload.items():
 
-        if name in {"acc_dimu", "acc_dstar"}:
-            stats = weighted_ratio_statistics(
-                num_hist,
-                den_hist,
-            )
-        else:
+        if statistics_mode == "efficiency":
             stats = weighted_efficiency_statistics(
-                num_hist,
-                den_hist,
+                hist_num,
+                hist_den,
             )
-
-        edges = tuple(
-            np.asarray(axis.edges, dtype=float)
-            for axis in den_hist.axes
-        )
-
-        eff_file[f"{name}_err_up_weighted"] = (
-            stats["err_up"],
-            *edges,
-        )
-        eff_file[f"{name}_err_down_weighted"] = (
-            stats["err_down"],
-            *edges,
-        )
-        eff_file[f"{name}_n_eff"] = (
-            stats["n_eff"],
-            *edges,
-        )
-
-        eff_file[f"raw/{name}_num_sumw"] = (
-            stats["num_sumw"],
-            *edges,
-        )
-        eff_file[f"raw/{name}_num_sumw2"] = (
-            stats["num_sumw2"],
-            *edges,
-        )
-        eff_file[f"raw/{name}_den_sumw"] = (
-            stats["den_sumw"],
-            *edges,
-        )
-        eff_file[f"raw/{name}_den_sumw2"] = (
-            stats["den_sumw2"],
-            *edges,
-        )
-
-        finite = stats["n_eff"][np.isfinite(stats["n_eff"])]
-
-        if finite.size:
-            print(
-                f"{name:20s}: "
-                f"N_eff min={finite.min():.2f}, "
-                f"max={finite.max():.2f}, "
-                f"bins<10={np.count_nonzero(finite < 10.0)}, "
-                f"bins<25={np.count_nonzero(finite < 25.0)}"
+        elif statistics_mode == "ratio":
+            stats = weighted_ratio_statistics(
+                hist_num,
+                hist_den,
             )
         else:
-            print(f"{name:20s}: no valid bins")
+            raise RuntimeError(
+                f"Unsupported statistics mode: {statistics_mode}"
+            )
+
+        eff_file[key] = nominal
+
+        err_up_hist = histogram_from_array(
+            nominal,
+            err_up,
+        )
+        err_down_hist = histogram_from_array(
+            nominal,
+            err_down,
+        )
+
+        n_eff_hist = histogram_from_array(
+            nominal,
+            stats["n_eff"],
+        )
+
+        num_sumw_hist = histogram_from_array(
+            nominal,
+            stats["num_sumw"],
+        )
+        num_sumw2_hist = histogram_from_array(
+            nominal,
+            stats["num_sumw2"],
+        )
+        den_sumw_hist = histogram_from_array(
+            nominal,
+            stats["den_sumw"],
+        )
+        den_sumw2_hist = histogram_from_array(
+            nominal,
+            stats["den_sumw2"],
+        )
+
+        # Canonical uncertainty objects.
+        eff_file[f'{key}_err_up'] = err_up_hist
+        eff_file[f'{key}_err_down'] = err_down_hist
+
+        # Explicit aliases for downstream auditing.
+        eff_file[f'{key}_err_up_weighted'] = err_up_hist
+        eff_file[f'{key}_err_down_weighted'] = err_down_hist
+        eff_file[f'{key}_n_eff'] = n_eff_hist
+
+        # Raw weighted sums required to reproduce the intervals.
+        eff_file[f'raw/{key}_num_sumw'] = num_sumw_hist
+        eff_file[f'raw/{key}_num_sumw2'] = num_sumw2_hist
+        eff_file[f'raw/{key}_den_sumw'] = den_sumw_hist
+        eff_file[f'raw/{key}_den_sumw2'] = den_sumw2_hist
+
+    eff_file.close()
 
     if args.plot:
-        # Create plots of all the components
-        for hist in hists:
-            if not isinstance(hists[hist], Hist): continue
-            fig, ax = plt.subplots()
-            if len(hists[hist].axes) == 2:
-                create_plot2d(hists[hist], ax=ax)
-            else:
-                create_plot2d(hists[hist].project("pt_dimu", "pt_dstar"), ax=ax)
-            fig.savefig(f'plots/efficiency/{hist}_' + config['out_name'] + '_' + f'{year}.png')
-            plt.close()
-
-        if year == '2016APV':
-            year_int = 2016
-        else:
-            year_int = int(year)
-        # Create plots 2D for efficiencies
-        create_eff_plot2D(
-            acc_dimu_hist, acc_dimu_err_up, acc_dimu_err_down, 
-            f'acc_dimu_' + config['out_name'] + '_' +  f'{year}.png', 
-            year_int, 
-            vmin=0, vmax=1
-        )
-        create_eff_plot2D(
-            acc_dstar_hist, acc_dstar_err_up, acc_dstar_err_down, 
-            f'acc_dstar_' + config['out_name'] + '_' +  f'{year}.png', 
-            year_int, 
-            vmin=0, vmax=1
-        )
-        create_eff_plot2D(
-            eff_cuts_dimu_hist, eff_cuts_dimu_err_up, eff_cuts_dimu_err_down, 
-            f'eff_cuts_dimu_' + config['out_name'] + '_' +  f'{year}.png', 
-            year_int, 
-            vmin=0, vmax=1
-        )
-        create_eff_plot2D(
-            eff_cuts_dstar_hist, eff_cuts_dstar_err_up, eff_cuts_dstar_err_down, 
-            f'eff_cuts_dstar_' + config['out_name'] + '_' +  f'{year}.png', 
-            year_int, 
-            vmin=0, vmax=1
-        )
-        create_eff_plot2D(
-            eff_trigger_hist, eff_trigger_err_up, eff_trigger_err_down, 
-            f'eff_trigger_' + config['out_name'] + '_' +  f'{year}.png', 
-            year_int, 
-            vmin=0, vmax=1
-        )
-        create_eff_plot2D(
-            eff_asso_pt_hist, eff_asso_pt_err_up, eff_asso_pt_err_down, 
-            f'eff_asso_pt_' + config['out_name'] + '_' +  f'{year}.png', 
-            year_int, 
-            vmin=0, vmax=1
-        )
-        create_eff_plot2D(
-            eff_asso_rap_hist, eff_asso_rap_err_up, eff_asso_rap_err_down, 
-            f'eff_asso_rap_' + config['out_name'] + '_' +  f'{year}.png', 
-            year_int, 
-            vmin=0, vmax=1
+        pathlib.Path('plots/efficiency').mkdir(
+            parents=True,
+            exist_ok=True,
         )
 
-        create_eff_plot1D(
-            hists['Reco_Dimu'].project('pt'), 
-            hists['Gen_Dimu'].project('pt'), 
-            config['bins_pt_dimu'],
-            'pt',
-            r'$p_{T, \mu^+\mu^-}$ [GeV/c]',
-            f'acc_dimu_pt_' + config['out_name'] + '_' +  f'{year}.png',
+        create_eff_plot2D(
+            acc_dimu_hist,
+            acc_dimu_err_up,
+            acc_dimu_err_down,
+            f'acc_dimu_{config["mc_type"]}_{year}.png',
+            year,
         )
-        create_eff_plot1D(
-            hists['Reco_Dimu'].project('rap'), 
-            hists['Gen_Dimu'].project('rap'), 
-            config['bins_rap_dimu'],
-            'rap',
-            r'$|y_{\mu^+\mu^-}|$',
-            f'acc_dimu_rap_' + config['out_name'] + '_' +  f'{year}.png',
+
+        create_eff_plot2D(
+            acc_dstar_hist,
+            acc_dstar_err_up,
+            acc_dstar_err_down,
+            f'acc_dstar_{config["mc_type"]}_{year}.png',
+            year,
         )
-        create_eff_plot1D(
-            hists['Reco_Dstar'].project('pt'), 
-            hists['Gen_Dstar'].project('pt'), 
-            config['bins_pt_dstar'],
-            'pt',
-            r'$p_{T, \mu^+\mu^-}$ [GeV/c]',
-            f'acc_dstar_pt_' + config['out_name'] + '_' +  f'{year}.png',
+
+        create_eff_plot2D(
+            eff_cuts_dimu_hist,
+            eff_cuts_dimu_err_up,
+            eff_cuts_dimu_err_down,
+            f'eff_cuts_dimu_{config["mc_type"]}_{year}.png',
+            year,
         )
-        create_eff_plot1D(
-            hists['Reco_Dstar'].project('rap'), 
-            hists['Gen_Dstar'].project('rap'), 
-            config['bins_rap_dstar'],
-            'rap',
-            r'$|y_{\mu^+\mu^-}|$',
-            f'acc_dstar_rap_' + config['out_name'] + '_' +  f'{year}.png',
+
+        create_eff_plot2D(
+            eff_cuts_dstar_hist,
+            eff_cuts_dstar_err_up,
+            eff_cuts_dstar_err_down,
+            f'eff_cuts_dstar_{config["mc_type"]}_{year}.png',
+            year,
         )
-        create_eff_plot1D(
-            hists['Cuts_Dimu'].project('pt'), 
-            hists['Reco_Dimu'].project('pt'), 
-            config['bins_pt_dimu'],
-            'pt',
-            r'$p_{T, \mu^+\mu^-}$ [GeV/c]',
-            f'eff_cuts_dimu_pt_' + config['out_name'] + '_' +  f'{year}.png',
+
+        create_eff_plot2D(
+            eff_trigger_hist,
+            eff_trigger_err_up,
+            eff_trigger_err_down,
+            f'eff_trigger_{config["mc_type"]}_{year}.png',
+            year,
         )
-        create_eff_plot1D(
-            hists['Cuts_Dimu'].project('rap'), 
-            hists['Reco_Dimu'].project('rap'), 
-            config['bins_rap_dimu'],
-            'rap',
-            r'$|y_{\mu^+\mu^-}|$',
-            f'eff_cuts_dimu_rap_' + config['out_name'] + '_' +  f'{year}.png',
+
+        create_eff_plot2D(
+            eff_asso_pt_hist,
+            eff_asso_pt_err_up,
+            eff_asso_pt_err_down,
+            f'eff_asso_pt_{config["mc_type"]}_{year}.png',
+            year,
         )
-        create_eff_plot1D(
-            hists['Cuts_Dstar'].project('pt'), 
-            hists['Reco_Dstar'].project('pt'), 
-            config['bins_pt_dstar'],
-            'pt',
-            r'$p_{T, \mu^+\mu^-}$ [GeV/c]',
-            f'eff_cuts_dstar_pt_' + config['out_name'] + '_' +  f'{year}.png',
+
+        create_eff_plot2D(
+            eff_asso_rap_hist,
+            eff_asso_rap_err_up,
+            eff_asso_rap_err_down,
+            f'eff_asso_rap_{config["mc_type"]}_{year}.png',
+            year,
         )
-        create_eff_plot1D(
-            hists['Cuts_Dstar'].project('rap'), 
-            hists['Reco_Dstar'].project('rap'), 
-            config['bins_rap_dstar'],
-            'rap',
-            r'$|y_{\mu^+\mu^-}|$',
-            f'eff_cuts_dstar_rap_' + config['out_name'] + '_' +  f'{year}.png',
-        )
-        create_eff_plot1D(
-            hists['Trigger_Dimu'].project('pt'), 
-            hists['Cuts_Dimu'].project('pt'), 
-            config['bins_pt_dimu'],
-            'pt',
-            r'$p_{T, \mu^+\mu^-}$ [GeV/c]',
-            f'eff_trigger_pt_' + config['out_name'] + '_' +  f'{year}.png',
-        )
-        create_eff_plot1D(
-            hists['Trigger_Dimu'].project('rap'), 
-            hists['Cuts_Dimu'].project('rap'), 
-            config['bins_rap_dimu'],
-            'rap',
-            r'$|y_{\mu^+\mu^-}|$',
-            f'eff_trigger_rap_' + config['out_name'] + '_' +  f'{year}.png',
-        )
+
+    print("Output written successfully.")
