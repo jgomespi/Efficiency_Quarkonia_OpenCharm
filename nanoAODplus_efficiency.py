@@ -69,6 +69,12 @@ def get_sample_specs(mc_type, year):
     return specs
 
 
+exclude = [
+    'DPS_D0ToKPi_JPsiPt-50To100_JPsiFilter_TuneCP5_13TeV-pythia8-evtgenRunIISummer20UL16RECO_41.root',
+    'Jpsi_25to100_Dstar_SPS_bbbar_3FS_2017_13TeV_NanoAODPlus_1037.root',
+]
+
+
 def discover_xrootd_files(spec):
     """Resolve a Caltech/XRootD sample to an explicit list of ROOT URLs."""
     xrd = spec['xrootd']
@@ -183,13 +189,6 @@ def write_input_manifest(mc_type, year, samples):
     return manifest
 
 
-exclude = [
-    'DPS_D0ToKPi_JPsiPt-50To100_JPsiFilter_TuneCP5_13TeV-pythia8-evtgenRunIISummer20UL16RECO_41.root',
-    'Jpsi_25to100_Dstar_SPS_bbbar_3FS_2017_13TeV_NanoAODPlus_1037.root',
-]
-
-
-
 def weighted_efficiency_statistics(
     hist_num,
     hist_den,
@@ -282,6 +281,7 @@ def weighted_efficiency_statistics(
         "den_sumw2": den_sumw2,
     }
 
+
 def weighted_ratio_statistics(hist_num, hist_den):
     """
     Ratio of two weighted histograms using first-order error propagation.
@@ -353,6 +353,7 @@ def weighted_ratio_statistics(hist_num, hist_den):
         "den_sumw2": den_sumw2,
     }
 
+
 def create_eff_hists2D(
     hist_num,
     hist_den,
@@ -400,6 +401,7 @@ def create_eff_hists2D(
     eff_hist[...] = values
 
     return eff_hist, err_up, err_down
+
 
 def create_eff_plot2D(hist_eff, err_up, err_down, savename, year, with_labels=True, **kwargs):
     fig, ax = plt.subplots()
