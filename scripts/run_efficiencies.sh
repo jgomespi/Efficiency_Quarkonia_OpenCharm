@@ -48,6 +48,29 @@ do
     fi
 done
 
+# Remote Caltech ROOT files are opened by uproot/coffea through the Python
+# XRootD bindings. xrdfs being available on PATH is not sufficient.
+if [[ "$NEEDS_2018" == "1" ]]; then
+    if ! python -c 'import XRootD' >/dev/null 2>&1; then
+        cat >&2 <<'EOF'
+ERROR: Python XRootD bindings are missing from the active environment.
+The 2018 efficiency workflow reads root:// Caltech inputs with uproot/coffea,
+so the bindings are required before any catalog scan or processing starts.
+
+Install them once in the JPsiDstar environment with:
+
+  conda install -y -c conda-forge xrootd
+
+Then verify:
+
+  python -c 'import XRootD; print(XRootD.__version__)'
+
+and rerun this script.
+EOF
+        exit 3
+    fi
+fi
+
 if [[ "$NEEDS_2018" == "1" ]]; then
     echo
     echo "============================================================"
