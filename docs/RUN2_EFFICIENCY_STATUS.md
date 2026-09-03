@@ -5,7 +5,7 @@
 The current intermediate physics result uses **2017 + 2018** only.
 
 - 2017: four final efficiency maps already produced and validated.
-- 2018: four MC components are resolved from Caltech and produced with year-specific corrections.
+- 2018: four MC components are being produced with year-specific corrections from the Caltech inputs described below.
 - 2016APV/2016: not included in the current result because the corresponding productions/tape recalls are still in progress.
 
 No year is to be used as a proxy for another year in the nominal 2017+2018 result.
@@ -25,38 +25,41 @@ The nominal correction uses the efficiency map corresponding to the actual year 
 
 | component | 2016APV | 2016 | 2017 | 2018 |
 |---|---|---|---|---|
-| DPS-ccbar | pending integration | pending integration | final | exact Caltech productions configured |
-| DPS-bbbar | pending integration | pending integration | final | exact Caltech productions configured |
-| SPS-ccbar | production/recall in progress | production/recall in progress | final | exact Caltech production configured |
-| SPS-bbbar | pending integration | pending integration | final | exact Caltech production configured |
+| DPS-ccbar | pending integration | pending integration | final | Caltech CRAB inputs configured |
+| DPS-bbbar | pending integration | pending integration | final | Caltech CRAB inputs configured |
+| SPS-ccbar | production/recall in progress | production/recall in progress | final | Caltech CRAB input configured |
+| SPS-bbbar | pending integration | pending integration | final | Caltech CRAB input configured |
 
 ## 2018 input policy
 
-The authoritative 2018 source locations are the Caltech paths recorded in `Control_Monte_Carlo.xlsx`. The preparation script uses those exact production directories/timestamps; it does not infer the year from ROOT filenames and it does not scan the full `/store/group/uerj/mabarros` catalog.
+The authoritative 2018 source locations are the Caltech production paths recorded in `Control_Monte_Carlo.xlsx`, cross-checked against Mapse's `condor_mc_lxplus/get_files_xrootd.py`.
 
-This is especially important for the DPS-bbbar inputs: although they are the bbbar DPS analysis samples, their production names are `D0ToKPi_Jpsi..._HardQCD...` and contain neither the string `DPS` nor the string `bbbar`. Heuristic name matching is therefore incorrect for these samples.
+A critical detail is that the CRAB production timestamp is **not** to be recursively scanned. Mapse's file-list generator explicitly lists the terminal CRAB folders `0000`, `0001`, ... and concatenates those direct listings. A recursive listing from the timestamp directory can therefore return a much larger and incorrect ROOT set.
 
-Exact 2018 production timestamps currently frozen in the workflow:
+For the 2018 DPS-ccbar configuration, Mapse's generator records terminal-folder multiplicities `[2, 1, 1]` for the 9-30, 30-50 and 50-100 samples. The 2018 DPS-bbbar configuration records `[1, 1, 1]`.
 
-- DPS-ccbar 9-30: `230516_020037`
-- DPS-ccbar 30-50: `230124_190421`
-- DPS-ccbar 50-100: `220823_052048`
-- DPS-bbbar 9-30: `241216_185612`
-- DPS-bbbar 30-50: `250122_185754`
-- DPS-bbbar 50-100: `250122_185738`
-- SPS-ccbar: `260829_133033`
-- SPS-bbbar: `260829_133611`
+Exact 2018 production timestamps and expected direct ROOT counts used by the workflow:
 
-`scripts/prepare_caltech_2018_inputs.py`:
+- DPS-ccbar 9-30: `230516_020037`, folders `0000-0001`, 63 ROOTs
+- DPS-ccbar 30-50: `230124_190421`, folder `0000`, 18 ROOTs
+- DPS-ccbar 50-100: `220823_052048`, folder `0000`, 8 ROOTs
+- DPS-bbbar 9-30: `241216_185612`, folder `0000`, 8 ROOTs
+- DPS-bbbar 30-50: `250122_185754`, folder `0000`, 2 ROOTs
+- DPS-bbbar 50-100: `250122_185738`, folder `0000`, 1 ROOT
+- SPS-ccbar: `260829_133033`, folder `0000`, 3 ROOTs
+- SPS-bbbar: `260829_133611`, folder `0000`, 2 ROOTs
 
-- queries only those exact Caltech production directories;
-- uses logical XRootD paths rather than replica-specific transfer-host URLs;
-- de-duplicates every list by logical file name;
-- compares the resolved file count with the count recorded in `Control_Monte_Carlo.xlsx` and reports mismatches for review;
-- validates the first ROOT in every sample for the `Events` tree and required analysis branches;
-- freezes the exact lists under `inputs/caltech/*.txt`.
+The DPS-bbbar production names are `D0ToKPi_Jpsi..._HardQCD...`; they contain neither `DPS` nor `bbbar`, so heuristic name matching must not be used.
 
-The efficiency driver consumes only these frozen filelists. This prevents a file replicated on several `k8s-transfer-*` hosts from being counted multiple times.
+`scripts/prepare_caltech_2018_inputs.py` now:
+
+- queries only the configured terminal CRAB folders, with non-recursive `xrdfs ls`;
+- routes logical paths through `k8s-redir.ultralight.org:1094`;
+- requires the direct ROOT count to match the configured control count;
+- validates representative first/middle/last ROOTs for the `Events` tree and the analysis branches `Dimu_pt`, `Dstar_pt`, `GenPart_pt`;
+- freezes the exact lists under `inputs/caltech/*.txt` only after all eight sources pass preflight.
+
+This prevents both accidental recursive over-collection and accidental use of a non-NanoAODPlus processing stage.
 
 The standard command
 
@@ -64,7 +67,7 @@ The standard command
 WORKERS=4 bash scripts/run_efficiencies.sh 2018
 ```
 
-runs the input-resolution/validation stage first and only starts the efficiency jobs if all eight 2018 source lists (three DPS-ccbar slices, three DPS-bbbar slices, SPS-ccbar, SPS-bbbar) are non-empty and valid.
+runs the input-resolution/validation stage first and only starts the efficiency jobs if all eight 2018 source lists are valid.
 
 Set
 
