@@ -1,9 +1,18 @@
 # Input samples for the J/psi + D* efficiency calculation.
 #
 # dimu_cut is the lower generator-level J/psi pT limit appropriate
-# for that production. Empty lists mean "sample not available yet".
+# for that production.
 #
-# When new Run-2 productions arrive, only this file needs to change.
+# 2017 is the validated reference production.
+# 2018 is the current convener-analysis extension.
+# 2016APV/2016 remain intentionally empty while the corresponding
+# productions/tape recalls are in progress. When they become available,
+# only this file needs to be extended; the driver already supports them.
+#
+# Supported source types per sample entry:
+#   path:     local/EOS directory
+#   filelist: text file containing one ROOT path/URL per line
+#   xrootd:   remote discovery via xrdfs (base + include/exclude tokens)
 
 samples:
 
@@ -17,7 +26,13 @@ samples:
         dimu_cut: 30.0
       - path: /eos/user/m/mabarros/Monte_Carlo/dps_official/ccbar/JpsiPt50To100ToMuMuDstarToD0pi_2017
         dimu_cut: 50.0
-    "2018": []
+    "2018":
+      - path: /eos/user/m/mabarros/Monte_Carlo/dps_official/ccbar/JpsiPt9To30ToMuMuDstarToD0pi_2018
+        dimu_cut: 9.0
+      - path: /eos/user/m/mabarros/Monte_Carlo/dps_official/ccbar/JpsiPt30To50ToMuMuDstarToD0pi_2018
+        dimu_cut: 30.0
+      - path: /eos/user/m/mabarros/Monte_Carlo/dps_official/ccbar/JpsiPt50To100ToMuMuDstarToD0pi_2018
+        dimu_cut: 50.0
 
   DPS-bbbar:
     "2016APV": []
@@ -29,7 +44,13 @@ samples:
         dimu_cut: 30.0
       - path: /eos/user/m/mabarros/Monte_Carlo/dps_official/bbbar/JpsiPt50To100ToMuMuDstarToD0pi_2017
         dimu_cut: 50.0
-    "2018": []
+    "2018":
+      - path: /eos/user/m/mabarros/Monte_Carlo/dps_official/bbbar/JpsiPt9To30ToMuMuDstarToD0pi_2018
+        dimu_cut: 9.0
+      - path: /eos/user/m/mabarros/Monte_Carlo/dps_official/bbbar/JpsiPt30To50ToMuMuDstarToD0pi_2018
+        dimu_cut: 30.0
+      - path: /eos/user/m/mabarros/Monte_Carlo/dps_official/bbbar/JpsiPt50To100ToMuMuDstarToD0pi_2018
+        dimu_cut: 50.0
 
   SPS-ccbar:
     "2016APV": []
@@ -38,7 +59,15 @@ samples:
       - path: /eos/user/s/sfonseca/LHE_SPS/jpsi_ccbar_25to100_3FS_SPS_2017_nanoaodplus
         dimu_cut: 25.0
         recursive: true
-    "2018": []
+    "2018":
+      - dimu_cut: 25.0
+        xrootd:
+          redirector: k8s-redir.ultralight.org:1094
+          base: /store/group/uerj/mabarros/SPS-JPsiDstar-D0ToKPI-3FS_JPsiFilter_DstarFilter_TuneCP5_13TeV-bcvegpy2-pythia8-evtgen
+          include:
+            - "260829_133033"
+          exclude:
+            - "/failed/"
 
   SPS-bbbar:
     "2016APV": []
@@ -47,4 +76,12 @@ samples:
       - path: /eos/user/s/sfonseca/LHE_SPS/jpsi_bbbar_25to100_3FS_SPS_2017_nanoaodplus
         dimu_cut: 25.0
         recursive: true
-    "2018": []
+    "2018":
+      - dimu_cut: 25.0
+        xrootd:
+          redirector: k8s-redir.ultralight.org:1094
+          base: /store/group/uerj/mabarros/SPS-JPsiDstar-D0ToKPI-3FS-BBBar_JPsiFilter_DstarFilter_TuneCP5_13TeV-HelacOnia-pythia8-evtgen
+          include:
+            - "260829_133611"
+          exclude:
+            - "/failed/"
