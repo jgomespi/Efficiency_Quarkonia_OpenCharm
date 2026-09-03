@@ -32,34 +32,42 @@ The nominal correction uses the efficiency map corresponding to the actual year 
 
 ## 2018 input policy
 
-The authoritative 2018 source locations are the Caltech production paths recorded in `Control_Monte_Carlo.xlsx`, cross-checked against Mapse's `condor_mc_lxplus/get_files_xrootd.py`.
+The authoritative 2018 source contract is the Caltech production path plus the terminal CRAB-folder multiplicity recorded in Mapse's `condor_mc_lxplus/get_files_xrootd.py`.
 
-A critical detail is that the CRAB production timestamp is **not** to be recursively scanned. Mapse's file-list generator explicitly lists the terminal CRAB folders `0000`, `0001`, ... and concatenates those direct listings. A recursive listing from the timestamp directory can therefore return a much larger and incorrect ROOT set.
+The file count is **not** hard-coded. An earlier version of this branch incorrectly interpreted bookkeeping numbers as required ROOT-file counts and, for example, rejected the 2018 DPS-ccbar 9-30 production because it expected 63 files. That assumption was removed.
 
-For the 2018 DPS-ccbar configuration, Mapse's generator records terminal-folder multiplicities `[2, 1, 1]` for the 9-30, 30-50 and 50-100 samples. The 2018 DPS-bbbar configuration records `[1, 1, 1]`.
+On 2026-09-03 the direct Caltech listing of the configured DPS-ccbar 9-30 production returned:
 
-Exact 2018 production timestamps and expected direct ROOT counts used by the workflow:
+- `0000`: 997 ROOT files
+- `0001`: 602 ROOT files
+- total: 1599 unique logical ROOT files
 
-- DPS-ccbar 9-30: `230516_020037`, folders `0000-0001`, 63 ROOTs
-- DPS-ccbar 30-50: `230124_190421`, folder `0000`, 18 ROOTs
-- DPS-ccbar 50-100: `220823_052048`, folder `0000`, 8 ROOTs
-- DPS-bbbar 9-30: `241216_185612`, folder `0000`, 8 ROOTs
-- DPS-bbbar 30-50: `250122_185754`, folder `0000`, 2 ROOTs
-- DPS-bbbar 50-100: `250122_185738`, folder `0000`, 1 ROOT
-- SPS-ccbar: `260829_133033`, folder `0000`, 3 ROOTs
-- SPS-bbbar: `260829_133611`, folder `0000`, 2 ROOTs
+Those files come from the exact two terminal folders specified for that production. The runtime list itself is therefore authoritative; the result is then protected by NanoAODPlus schema validation and by `skipbadfiles=False` during Coffea processing.
+
+Mapse's 2018 CRAB configuration specifies:
+
+- DPS-ccbar 9-30: `230516_020037`, folders `0000-0001`
+- DPS-ccbar 30-50: `230124_190421`, folder `0000`
+- DPS-ccbar 50-100: `220823_052048`, folder `0000`
+- DPS-bbbar 9-30: `241216_185612`, folder `0000`
+- DPS-bbbar 30-50: `250122_185754`, folder `0000`
+- DPS-bbbar 50-100: `250122_185738`, folder `0000`
+- SPS-ccbar: `260829_133033`, folder `0000`
+- SPS-bbbar: `260829_133611`, folder `0000`
 
 The DPS-bbbar production names are `D0ToKPi_Jpsi..._HardQCD...`; they contain neither `DPS` nor `bbbar`, so heuristic name matching must not be used.
 
 `scripts/prepare_caltech_2018_inputs.py` now:
 
-- queries only the configured terminal CRAB folders, with non-recursive `xrdfs ls`;
+- queries only the configured terminal CRAB folders with non-recursive `xrdfs ls`;
 - routes logical paths through `k8s-redir.ultralight.org:1094`;
-- requires the direct ROOT count to match the configured control count;
+- de-duplicates by logical ROOT path;
+- records the actual number of files discovered at runtime instead of comparing with a stale expected count;
 - validates representative first/middle/last ROOTs for the `Events` tree and the analysis branches `Dimu_pt`, `Dstar_pt`, `GenPart_pt`;
-- freezes the exact lists under `inputs/caltech/*.txt` only after all eight sources pass preflight.
+- freezes the exact lists under `inputs/caltech/*.txt` only after all eight sources pass preflight;
+- reuses a frozen list only when its production path, terminal-folder multiplicity and stored file count are internally consistent with the current configuration.
 
-This prevents both accidental recursive over-collection and accidental use of a non-NanoAODPlus processing stage.
+Mapse's `condor_mc_lxplus` README states that these inputs are NanoAODPlus files and that `get_files_xrootd.py` is the file-list construction workflow used for the MC processing. The explicit branch checks above provide an additional runtime safeguard.
 
 The standard command
 
