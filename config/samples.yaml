@@ -9,10 +9,10 @@
 # productions/tape recalls are in progress. When they become available,
 # only this file needs to be extended; the driver already supports them.
 #
-# Supported source types per sample entry:
-#   path:     local/EOS directory
-#   filelist: text file containing one ROOT path/URL per line
-#   xrootd:   remote discovery via xrdfs (base + include/exclude tokens)
+# 2018 policy: scripts/prepare_caltech_2018_inputs.py discovers the
+# Caltech datasets, de-duplicates XRootD replicas by logical file name,
+# validates the first ROOT of every sample, and freezes the exact URLs in
+# inputs/caltech/*.txt. The physics driver consumes only those frozen lists.
 
 samples:
 
@@ -27,11 +27,11 @@ samples:
       - path: /eos/user/m/mabarros/Monte_Carlo/dps_official/ccbar/JpsiPt50To100ToMuMuDstarToD0pi_2017
         dimu_cut: 50.0
     "2018":
-      - path: /eos/user/m/mabarros/Monte_Carlo/dps_official/ccbar/JpsiPt9To30ToMuMuDstarToD0pi_2018
+      - filelist: inputs/caltech/DPS-ccbar_2018_9to30.txt
         dimu_cut: 9.0
-      - path: /eos/user/m/mabarros/Monte_Carlo/dps_official/ccbar/JpsiPt30To50ToMuMuDstarToD0pi_2018
+      - filelist: inputs/caltech/DPS-ccbar_2018_30to50.txt
         dimu_cut: 30.0
-      - path: /eos/user/m/mabarros/Monte_Carlo/dps_official/ccbar/JpsiPt50To100ToMuMuDstarToD0pi_2018
+      - filelist: inputs/caltech/DPS-ccbar_2018_50to100.txt
         dimu_cut: 50.0
 
   DPS-bbbar:
@@ -45,11 +45,11 @@ samples:
       - path: /eos/user/m/mabarros/Monte_Carlo/dps_official/bbbar/JpsiPt50To100ToMuMuDstarToD0pi_2017
         dimu_cut: 50.0
     "2018":
-      - path: /eos/user/m/mabarros/Monte_Carlo/dps_official/bbbar/JpsiPt9To30ToMuMuDstarToD0pi_2018
+      - filelist: inputs/caltech/DPS-bbbar_2018_9to30.txt
         dimu_cut: 9.0
-      - path: /eos/user/m/mabarros/Monte_Carlo/dps_official/bbbar/JpsiPt30To50ToMuMuDstarToD0pi_2018
+      - filelist: inputs/caltech/DPS-bbbar_2018_30to50.txt
         dimu_cut: 30.0
-      - path: /eos/user/m/mabarros/Monte_Carlo/dps_official/bbbar/JpsiPt50To100ToMuMuDstarToD0pi_2018
+      - filelist: inputs/caltech/DPS-bbbar_2018_50to100.txt
         dimu_cut: 50.0
 
   SPS-ccbar:
@@ -60,14 +60,8 @@ samples:
         dimu_cut: 25.0
         recursive: true
     "2018":
-      - dimu_cut: 25.0
-        xrootd:
-          redirector: k8s-redir.ultralight.org:1094
-          base: /store/group/uerj/mabarros/SPS-JPsiDstar-D0ToKPI-3FS_JPsiFilter_DstarFilter_TuneCP5_13TeV-bcvegpy2-pythia8-evtgen
-          include:
-            - "260829_133033"
-          exclude:
-            - "/failed/"
+      - filelist: inputs/caltech/SPS-ccbar_2018.txt
+        dimu_cut: 25.0
 
   SPS-bbbar:
     "2016APV": []
@@ -77,11 +71,5 @@ samples:
         dimu_cut: 25.0
         recursive: true
     "2018":
-      - dimu_cut: 25.0
-        xrootd:
-          redirector: k8s-redir.ultralight.org:1094
-          base: /store/group/uerj/mabarros/SPS-JPsiDstar-D0ToKPI-3FS-BBBar_JPsiFilter_DstarFilter_TuneCP5_13TeV-HelacOnia-pythia8-evtgen
-          include:
-            - "260829_133611"
-          exclude:
-            - "/failed/"
+      - filelist: inputs/caltech/SPS-bbbar_2018.txt
+        dimu_cut: 25.0
