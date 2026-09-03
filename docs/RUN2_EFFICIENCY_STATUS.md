@@ -25,23 +25,34 @@ The nominal correction uses the efficiency map corresponding to the actual year 
 
 | component | 2016APV | 2016 | 2017 | 2018 |
 |---|---|---|---|---|
-| DPS-ccbar | pending integration | pending integration | final | Caltech discovery configured |
-| DPS-bbbar | pending integration | pending integration | final | Caltech discovery configured |
-| SPS-ccbar | production/recall in progress | production/recall in progress | final | Caltech discovery configured |
-| SPS-bbbar | pending integration | pending integration | final | Caltech discovery configured |
+| DPS-ccbar | pending integration | pending integration | final | exact Caltech productions configured |
+| DPS-bbbar | pending integration | pending integration | final | exact Caltech productions configured |
+| SPS-ccbar | production/recall in progress | production/recall in progress | final | exact Caltech production configured |
+| SPS-bbbar | pending integration | pending integration | final | exact Caltech production configured |
 
 ## 2018 input policy
 
-All 2018 samples are resolved from the Caltech storage before the physics job starts.
+The authoritative 2018 source locations are the Caltech paths recorded in `Control_Monte_Carlo.xlsx`. The preparation script uses those exact production directories/timestamps; it does not infer the year from ROOT filenames and it does not scan the full `/store/group/uerj/mabarros` catalog.
+
+This is especially important for the DPS-bbbar inputs: although they are the bbbar DPS analysis samples, their production names are `D0ToKPi_Jpsi..._HardQCD...` and contain neither the string `DPS` nor the string `bbbar`. Heuristic name matching is therefore incorrect for these samples.
+
+Exact 2018 production timestamps currently frozen in the workflow:
+
+- DPS-ccbar 9-30: `230516_020037`
+- DPS-ccbar 30-50: `230124_190421`
+- DPS-ccbar 50-100: `220823_052048`
+- DPS-bbbar 9-30: `241216_185612`
+- DPS-bbbar 30-50: `250122_185754`
+- DPS-bbbar 50-100: `250122_185738`
+- SPS-ccbar: `260829_133033`
+- SPS-bbbar: `260829_133611`
 
 `scripts/prepare_caltech_2018_inputs.py`:
 
-- discovers the three DPS-ccbar generator-pT slices from the official Caltech collections;
-- discovers the three DPS-bbbar generator-pT slices using explicit 2018 and final-stage naming constraints;
-- discovers SPS-ccbar using production tag `260829_133033`;
-- discovers SPS-bbbar using production tag `260829_133611`;
+- queries only those exact Caltech production directories;
 - uses logical XRootD paths rather than replica-specific transfer-host URLs;
 - de-duplicates every list by logical file name;
+- compares the resolved file count with the count recorded in `Control_Monte_Carlo.xlsx` and reports mismatches for review;
 - validates the first ROOT in every sample for the `Events` tree and required analysis branches;
 - freezes the exact lists under `inputs/caltech/*.txt`.
 
@@ -61,7 +72,7 @@ Set
 CALTECH_REFRESH=1 WORKERS=4 bash scripts/run_efficiencies.sh 2018
 ```
 
-to force a fresh Caltech catalog query instead of reusing already frozen local filelists.
+to force a fresh Caltech query instead of reusing already frozen local filelists.
 
 `skipbadfiles` remains disabled: a missing or unreadable ROOT must fail the job instead of silently changing the effective MC sample.
 
