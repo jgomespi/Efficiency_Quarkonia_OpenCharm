@@ -175,22 +175,19 @@ def discover_exact(label, spec):
     )
 
     expected = spec.get("control_count")
+    if expected is not None and len(files) != expected:
+        raise RuntimeError(
+            f"{label}: resolved {len(files)} unique ROOT files from the "
+            f"exact Caltech production, but Control_Monte_Carlo.xlsx records "
+            f"{expected}. Refusing to start the efficiency job until this "
+            "input-contract mismatch is understood."
+        )
+
     if expected is not None:
-        if len(files) == expected:
-            print(
-                f"  count check: {len(files)} ROOT files "
-                f"(matches Control_Monte_Carlo.xlsx)"
-            )
-        else:
-            # The spreadsheet count is provenance/audit information, not a
-            # hard processing cut. The exact production path + branch check
-            # determine the actual frozen input set.
-            print(
-                f"  WARNING: resolved {len(files)} unique ROOT files; "
-                f"Control_Monte_Carlo.xlsx records {expected}. "
-                "The exact production path will be frozen and the mismatch "
-                "must be reviewed before calling the result final."
-            )
+        print(
+            f"  count check: {len(files)} ROOT files "
+            f"(matches Control_Monte_Carlo.xlsx)"
+        )
 
     return files
 
