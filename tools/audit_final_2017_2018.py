@@ -2,12 +2,16 @@
 
 """Read-only audit of the finalized 2017 and 2018 efficiency ROOT files.
 
-This is the last efficiency gate before the physics analysis is allowed to use
-2017+2018. It checks that the four final files in each year are finite and
-physical, that both years use identical axes, that the nominal association map
-uses the validated common grid, and that its effective statistics remain above
-the N_eff threshold. It also prints 2018/2017 central-value ratios as a
-cross-year diagnostic; those ratios are not themselves used as a hard gate.
+This is the cross-year consistency gate before physics integration.  Axis
+comparisons use a small numerical tolerance because the 2017 ROOT payloads were
+written with slightly different floating-point edge representations between
+central/error/N_eff histograms.  The diagnostic shows those differences are
+well below 1e-7 and the physical bin boundaries are the same.
+
+The association map keeps a hard N_eff >= 25 gate.  Other maps with positive,
+finite N_eff below 25 are reported as warnings rather than silently accepted;
+those sparse bins must be reviewed with the dedicated common-dimuon rebinning
+study before the efficiency stage is declared complete.
 """
 
 from pathlib import Path
@@ -37,7 +41,9 @@ RAW_SUFFIXES = ("num_sumw", "num_sumw2", "den_sumw", "den_sumw2")
 
 FINAL_DIR = Path("output/efficiency/final")
 MIN_ASSOC_NEFF = 25.0
-TOLERANCE = 1.0e-10
+SPARSE_WARNING_NEFF = 25.0
+VALUE_TOLERANCE = 1.0e-10
+AXIS_ATOL = 1.0e-7
 EXPECTED_ASSOC_JPSI_EDGES = np.asarray([25.0, 100.0])
 EXPECTED_ASSOC_DSTAR_EDGES = np.asarray([4.0, 10.0, 20.0, 30.0, 60.0])
 
@@ -60,7 +66,14 @@ def hist_payload(obj):
 
 def same_edges(lhs, rhs):
     return len(lhs) == len(rhs) and all(
-        np.array_equal(a, b) for a, b in zip(lhs, rhs)
+        a.shape == b.shape and np.allclose(a, b, rtol=0.0, atol=AXIS_ATOL)
+        for a, b in zip(lhs, rhs)
+    )
+
+
+def same_axis(axis, expected):
+    return axis.shape == expected.shape and np.allclose(
+        axis, expected, rtol=0.0, atol=AXIS_ATOL
     )
 
 
@@ -73,6 +86,7 @@ def fmt(value):
 def audit_file(path, component, year, reference_axes):
     label = f"{year}/{component}"
     blockers = []
+    warnings = []
     summaries = {}
 
     if not path.is_file():
@@ -112,11 +126,11 @@ def audit_file(path, component, year, reference_axes):
                 if not np.all(np.isfinite(array)):
                     blockers.append(f"{name}/{array_name}: non-finite value(s)")
 
-            if np.any(values < -TOLERANCE):
+            if np.any(values < -VALUE_TOLERANCE):
                 blockers.append(f"{name}: negative central value")
-            if name not in RESPONSE_MAPS and np.any(values > 1.0 + TOLERANCE):
+            if name not in RESPONSE_MAPS and np.any(values > 1.0 + VALUE_TOLERANCE):
                 blockers.append(f"{name}: strict efficiency above one")
-            if np.any(err_up < -TOLERANCE) or np.any(err_down < -TOLERANCE):
+            if np.any(err_up < -VALUE_TOLERANCE) or np.any(err_down < -VALUE_TOLERANCE):
                 blockers.append(f"{name}: negative uncertainty")
             if np.any(n_eff <= 0.0):
                 blockers.append(f"{name}: non-positive N_eff")
@@ -126,6 +140,19 @@ def audit_file(path, component, year, reference_axes):
             elif not same_edges(reference_axes[name], edges):
                 blockers.append(
                     f"{name}: axes differ from the common 2017+2018 reference"
+                )
+
+            sparse = np.argwhere(
+                np.isfinite(n_eff) & (n_eff > 0.0) & (n_eff < SPARSE_WARNING_NEFF)
+            )
+            if name != "eff_asso_pt" and sparse.size:
+                items = []
+                for index in sparse:
+                    idx = tuple(int(i) for i in index)
+                    items.append(f"idx={idx}:N_eff={n_eff[idx]:.6g}")
+                warnings.append(
+                    f"{name}: sparse final bin(s) below N_eff={SPARSE_WARNING_NEFF:g}: "
+                    + ", ".join(items)
                 )
 
             summaries[name] = {
@@ -141,11 +168,11 @@ def audit_file(path, component, year, reference_axes):
         if len(assoc_edges) != 2:
             blockers.append("eff_asso_pt: expected a two-dimensional map")
         else:
-            if not np.array_equal(assoc_edges[0], EXPECTED_ASSOC_JPSI_EDGES):
+            if not same_axis(assoc_edges[0], EXPECTED_ASSOC_JPSI_EDGES):
                 blockers.append(
                     "eff_asso_pt: J/psi-pT edges are not [25, 100] GeV"
                 )
-            if not np.array_equal(assoc_edges[1], EXPECTED_ASSOC_DSTAR_EDGES):
+            if not same_axis(assoc_edges[1], EXPECTED_ASSOC_DSTAR_EDGES):
                 blockers.append(
                     "eff_asso_pt: D*-pT edges are not [4, 10, 20, 30, 60] GeV"
                 )
@@ -156,8 +183,8 @@ def audit_file(path, component, year, reference_axes):
                 f"{MIN_ASSOC_NEFF:g}"
             )
 
-        # The nominal association map must be exactly reproducible from the
-        # rebinned raw weighted sums stored in the final file.
+        # The nominal association map must be reproducible from the rebinned
+        # raw weighted sums stored in the final file.
         raw = {}
         raw_edges = None
         for suffix in RAW_SUFFIXES:
@@ -193,7 +220,13 @@ def audit_file(path, component, year, reference_axes):
             ):
                 blockers.append("eff_asso_pt N_eff does not match raw sums")
 
-    status = "PASS" if not blockers else "BLOCK"
+    if blockers:
+        status = "BLOCK"
+    elif warnings:
+        status = "WARN"
+    else:
+        status = "PASS"
+
     print(
         f"{label:20s} {status:5s}  "
         f"assoc min N_eff={summaries['eff_asso_pt']['min_neff']:.3f}  "
@@ -202,24 +235,28 @@ def audit_file(path, component, year, reference_axes):
     )
 
     for blocker in blockers:
-        print(f"  -> {blocker}")
+        print(f"  -> BLOCK: {blocker}")
+    for warning in warnings:
+        print(f"  -> WARNING: {warning}")
 
-    return blockers, summaries
+    return blockers, warnings, summaries
 
 
 def main():
     print("Final 2017+2018 efficiency audit")
     print(f"Association N_eff gate: {MIN_ASSOC_NEFF:g}")
+    print(f"Axis comparison tolerance: {AXIS_ATOL:g}")
     print()
 
     reference_axes = {}
     all_blockers = []
+    all_warnings = []
     payload = {year: {} for year in YEARS}
 
     for year in YEARS:
         print(f"Year {year}")
         for component in COMPONENTS:
-            blockers, summaries = audit_file(
+            blockers, warnings, summaries = audit_file(
                 final_path(component, year),
                 component,
                 year,
@@ -227,6 +264,9 @@ def main():
             )
             all_blockers.extend(
                 f"{year}/{component}: {item}" for item in blockers
+            )
+            all_warnings.extend(
+                f"{year}/{component}: {item}" for item in warnings
             )
             payload[year][component] = summaries
         print()
@@ -237,7 +277,11 @@ def main():
         for name in MAPS:
             v17 = payload["2017"][component][name]["values"]
             v18 = payload["2018"][component][name]["values"]
-            valid = np.isfinite(v17) & np.isfinite(v18) & (np.abs(v17) > TOLERANCE)
+            valid = (
+                np.isfinite(v17)
+                & np.isfinite(v18)
+                & (np.abs(v17) > VALUE_TOLERANCE)
+            )
             if not np.any(valid):
                 print(f"    {name:15s} no finite non-zero 2017 denominator bins")
                 continue
@@ -264,15 +308,22 @@ def main():
             print(f"  - {blocker}")
         raise SystemExit(2)
 
+    if all_warnings:
+        print("FINAL EFFICIENCY GATE: PASS WITH WARNINGS")
+        print(
+            "Axis and association-map consistency pass.  Sparse non-association "
+            "bins remain and must be reviewed before physics integration."
+        )
+        for warning in all_warnings:
+            print(f"  - {warning}")
+        print("Next: run tools/scan_common_dimuon_rebinning.py")
+        return
+
     print("FINAL EFFICIENCY GATE: PASS")
     print("All eight final ROOT files are finite, physical and axis-compatible.")
     print(
         "The nominal association maps use the common [25,100] x "
         "[4,10,20,30,60] GeV grid and satisfy N_eff >= 25."
-    )
-    print(
-        "If the cross-year ratios are physically reasonable on inspection, "
-        "the efficiency inputs are ready for 2017+2018 physics integration."
     )
 
 
