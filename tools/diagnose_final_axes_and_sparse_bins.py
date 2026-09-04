@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 
-"""Read-only diagnostic for final 2017/2018 efficiency ROOT files.
+"""Read-only diagnostic for 2017/2018 efficiency axis contracts.
 
-Prints the exact axis edges stored in central/error/N_eff histograms and reports
-all bins with N_eff < 25. This is intentionally diagnostic only: it writes no
-ROOT files and makes no automatic repair.
+For each component/map, compare the differential source ROOT metadata with the
+final ROOT metadata, print exact central/error/N_eff axes when a contract fails,
+and report every final bin with N_eff < 25. This script writes no ROOT files and
+makes no automatic repair.
 """
 
 from pathlib import Path
@@ -22,8 +23,15 @@ MAPS = (
     "eff_asso_pt",
     "eff_asso_rap",
 )
-FINAL_DIR = Path("output/efficiency/final")
+SOURCE_DIR = Path("output/efficiency")
+FINAL_DIR = SOURCE_DIR / "final"
 MIN_NEFF = 25.0
+EXPECTED_ASSOC_X = np.asarray([25.0, 100.0])
+EXPECTED_ASSOC_Y = np.asarray([4.0, 10.0, 20.0, 30.0, 60.0])
+
+
+def source_path(component, year):
+    return SOURCE_DIR / f"efficiencies_{component}_differential_jpsi_{year}.root"
 
 
 def final_path(component, year):
@@ -42,9 +50,7 @@ def edges_text(edges):
 
 
 def same_shape_edges(lhs, rhs):
-    if len(lhs) != len(rhs):
-        return False
-    return all(a.shape == b.shape for a, b in zip(lhs, rhs))
+    return len(lhs) == len(rhs) and all(a.shape == b.shape for a, b in zip(lhs, rhs))
 
 
 def exact_edges(lhs, rhs):
@@ -52,72 +58,130 @@ def exact_edges(lhs, rhs):
 
 
 def close_edges(lhs, rhs):
-    return same_shape_edges(lhs, rhs) and all(np.allclose(a, b, rtol=0.0, atol=1e-7) for a, b in zip(lhs, rhs))
+    return same_shape_edges(lhs, rhs) and all(
+        np.allclose(a, b, rtol=0.0, atol=1e-7) for a, b in zip(lhs, rhs)
+    )
 
 
 def main():
-    print("Final efficiency axis + sparse-bin diagnostic")
+    print("Final efficiency source/final axis + sparse-bin diagnostic")
     print()
 
-    reference = {}
+    reference_final = {}
 
     for year in YEARS:
         print(f"================ YEAR {year} ================")
         for component in COMPONENTS:
-            path = final_path(component, year)
-            if not path.is_file():
-                raise FileNotFoundError(path)
+            src_path = source_path(component, year)
+            fin_path = final_path(component, year)
+            if not src_path.is_file():
+                raise FileNotFoundError(src_path)
+            if not fin_path.is_file():
+                raise FileNotFoundError(fin_path)
 
-            print(f"\n{component}: {path}")
-            with uproot.open(path) as f:
+            print(f"\n{component}")
+            print(f"  source: {src_path}")
+            print(f"  final : {fin_path}")
+
+            with uproot.open(src_path) as src, uproot.open(fin_path) as fin:
                 for name in MAPS:
-                    central, c_edges = payload(f[name])
-                    err_up, u_edges = payload(f[f"{name}_err_up"])
-                    err_down, d_edges = payload(f[f"{name}_err_down"])
-                    n_eff, n_edges = payload(f[f"{name}_n_eff"])
+                    src_central, src_c_edges = payload(src[name])
+                    src_err_up, src_u_edges = payload(src[f"{name}_err_up"])
+                    src_err_down, src_d_edges = payload(src[f"{name}_err_down"])
+                    src_neff, src_n_edges = payload(src[f"{name}_n_eff"])
 
-                    if name not in reference:
-                        reference[name] = c_edges
+                    central, c_edges = payload(fin[name])
+                    err_up, u_edges = payload(fin[f"{name}_err_up"])
+                    err_down, d_edges = payload(fin[f"{name}_err_down"])
+                    n_eff, n_edges = payload(fin[f"{name}_n_eff"])
 
-                    central_vs_ref_exact = exact_edges(c_edges, reference[name])
-                    central_vs_ref_close = close_edges(c_edges, reference[name])
-                    error_contract_exact = (
+                    if name not in reference_final:
+                        reference_final[name] = c_edges
+
+                    final_vs_ref_exact = exact_edges(c_edges, reference_final[name])
+                    final_vs_ref_close = close_edges(c_edges, reference_final[name])
+                    final_error_exact = (
                         exact_edges(c_edges, u_edges)
                         and exact_edges(c_edges, d_edges)
                         and exact_edges(c_edges, n_edges)
                     )
-                    error_contract_close = (
+                    final_error_close = (
                         close_edges(c_edges, u_edges)
                         and close_edges(c_edges, d_edges)
                         and close_edges(c_edges, n_edges)
                     )
+                    source_error_exact = (
+                        exact_edges(src_c_edges, src_u_edges)
+                        and exact_edges(src_c_edges, src_d_edges)
+                        and exact_edges(src_c_edges, src_n_edges)
+                    )
+                    source_error_close = (
+                        close_edges(src_c_edges, src_u_edges)
+                        and close_edges(src_c_edges, src_d_edges)
+                        and close_edges(src_c_edges, src_n_edges)
+                    )
+
+                    # All non-association maps are copied without rebinning, so
+                    # source and final central axes should be identical. For
+                    # eff_asso_pt, the final J/psi-pT axis is intentionally rebinned.
+                    source_final_expected_equal = name != "eff_asso_pt"
+                    source_final_exact = exact_edges(src_c_edges, c_edges)
+                    source_final_close = close_edges(src_c_edges, c_edges)
+
+                    assoc_expected = True
+                    if name == "eff_asso_pt":
+                        assoc_expected = (
+                            len(c_edges) == 2
+                            and np.array_equal(c_edges[0], EXPECTED_ASSOC_X)
+                            and np.array_equal(c_edges[1], EXPECTED_ASSOC_Y)
+                        )
+
+                    low = np.argwhere(np.isfinite(n_eff) & (n_eff < MIN_NEFF))
 
                     needs_print = (
-                        not central_vs_ref_exact
-                        or not error_contract_exact
-                        or np.any(n_eff < MIN_NEFF)
+                        not final_vs_ref_exact
+                        or not final_error_exact
+                        or not source_error_exact
+                        or (source_final_expected_equal and not source_final_exact)
+                        or (name == "eff_asso_pt" and not assoc_expected)
+                        or low.size > 0
                         or name == "eff_asso_pt"
                     )
 
                     if needs_print:
                         print(f"  {name}")
-                        print(f"    shape central: {central.shape}")
-                        print(f"    central edges: {edges_text(c_edges)}")
-                        print(f"    err_up edges : {edges_text(u_edges)}")
-                        print(f"    err_dn edges : {edges_text(d_edges)}")
-                        print(f"    n_eff edges  : {edges_text(n_edges)}")
+                        print(f"    source shape : {src_central.shape}")
+                        print(f"    final shape  : {central.shape}")
+                        print(f"    source central edges: {edges_text(src_c_edges)}")
+                        print(f"    source err_up edges : {edges_text(src_u_edges)}")
+                        print(f"    source err_dn edges : {edges_text(src_d_edges)}")
+                        print(f"    source n_eff edges  : {edges_text(src_n_edges)}")
+                        print(f"    final central edges : {edges_text(c_edges)}")
+                        print(f"    final err_up edges  : {edges_text(u_edges)}")
+                        print(f"    final err_dn edges  : {edges_text(d_edges)}")
+                        print(f"    final n_eff edges   : {edges_text(n_edges)}")
                         print(
-                            "    vs first-2017 central: "
-                            f"exact={central_vs_ref_exact}, close(1e-7)={central_vs_ref_close}"
+                            "    source central/error contract: "
+                            f"exact={source_error_exact}, close(1e-7)={source_error_close}"
                         )
                         print(
-                            "    central/error axis contract: "
-                            f"exact={error_contract_exact}, close(1e-7)={error_contract_close}"
+                            "    final central/error contract : "
+                            f"exact={final_error_exact}, close(1e-7)={final_error_close}"
                         )
+                        if source_final_expected_equal:
+                            print(
+                                "    source/final central axes     : "
+                                f"exact={source_final_exact}, close(1e-7)={source_final_close}"
+                            )
+                        print(
+                            "    final vs first-2017 reference : "
+                            f"exact={final_vs_ref_exact}, close(1e-7)={final_vs_ref_close}"
+                        )
+                        if name == "eff_asso_pt":
+                            print(f"    final expected association axes: {assoc_expected}")
 
-                    low = np.argwhere(np.isfinite(n_eff) & (n_eff < MIN_NEFF))
                     if low.size:
-                        print(f"    bins with N_eff < {MIN_NEFF:g}:")
+                        print(f"    final bins with N_eff < {MIN_NEFF:g}:")
                         for index in low:
                             idx = tuple(int(i) for i in index)
                             print(
