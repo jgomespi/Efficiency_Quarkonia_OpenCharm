@@ -5,7 +5,7 @@
 The current intermediate physics result uses **2017 + 2018** only.
 
 - 2017: four final efficiency maps already produced and validated.
-- 2018: full NanoAODPlus/Coffea production completed successfully for all four MC components; common finalization audit is the current gate.
+- 2018: full NanoAODPlus/Coffea production completed successfully; the common association binning has now been fixed by audit and final ROOT production is the current gate.
 - 2016APV/2016: not included in the current result because the corresponding productions/tape recalls are still in progress.
 
 No year is to be used as a proxy for another year in the nominal 2017+2018 result.
@@ -25,12 +25,12 @@ The nominal correction uses the efficiency map corresponding to the actual year 
 
 | component | 2016APV | 2016 | 2017 | 2018 |
 |---|---|---|---|---|
-| DPS-ccbar | pending integration | pending integration | final | raw differential production complete; finalization audit pending |
-| DPS-bbbar | pending integration | pending integration | final | raw differential production complete; finalization audit pending |
-| SPS-ccbar | production/recall in progress | production/recall in progress | final | raw differential production complete; finalization audit pending |
-| SPS-bbbar | pending integration | pending integration | final | raw differential production complete; finalization audit pending |
+| DPS-ccbar | pending integration | pending integration | final | raw production complete; common-grid audit passed; final ROOT pending |
+| DPS-bbbar | pending integration | pending integration | final | raw production complete; common-grid audit passed; final ROOT pending |
+| SPS-ccbar | production/recall in progress | production/recall in progress | final | raw production complete; common-grid audit passed; final ROOT pending |
+| SPS-bbbar | pending integration | pending integration | final | raw production complete; common-grid audit passed with recoverable fine-grid warning; final ROOT pending |
 
-The detailed immutable record of the completed 2018 production is in
+The detailed immutable production/audit record is in
 `docs/2018_PRODUCTION_RECORD.md`.
 
 ## 2018 production completion
@@ -84,30 +84,55 @@ The DPS-bbbar production names are `D0ToKPi_Jpsi..._HardQCD...`; they contain ne
 - freezes the exact lists under `inputs/caltech/*.txt` only after all eight sources pass preflight;
 - reuses a frozen list only when its production path, terminal-folder multiplicity and stored file count are internally consistent with the current configuration.
 
-Mapse's `condor_mc_lxplus` README states that these inputs are NanoAODPlus files and that `get_files_xrootd.py` is the file-list construction workflow used for the MC processing. The explicit branch checks above provide an additional runtime safeguard.
-
 Python XRootD bindings are required for the 2018 remote inputs because `uproot` opens the frozen `root://` URLs directly. The production environment used Python 3.9.25, Coffea 0.7.7, Uproot 4.3.7 and XRootD Python bindings 6.1.1.
 
-## Current gate: 2018 common finalization audit
+## 2018 common-grid audit decision
 
-Do **not** immediately copy the validated 2017 finalizer and write 2018 final ROOT files. First inspect whether the 2018 statistical support permits the same nominal association-map discretization used in 2017.
+The read-only audit found that all maps other than one original fine association bin are numerically well formed. The original `SPS-bbbar/eff_asso_pt` 4x4 grid contains one genuine zero-statistics bin. Its central value, uncertainty and `N_eff` are therefore non-finite on the original fine grid.
 
-The read-only audit tool is:
+This is **recoverable by construction** because the nominal association map is not copied bin-by-bin. It is reconstructed from the raw weighted `sumw/sumw2` after the mandated J/psi-pT rebinning. The audit tool now distinguishes genuine all-zero fine bins from non-recoverable numerical failures.
 
-```bash
-python tools/audit_efficiencies_common.py --year 2018
+For the validated 2017 common association grid
+
+```text
+J/psi pT: [25, 100] GeV
+D* pT:    [4, 10, 20, 30, 60] GeV
 ```
 
-It checks all seven efficiency/response maps, their weighted uncertainties and raw `sumw/sumw2` payloads, then scans every contiguous J/psi-pT partition of `eff_asso_pt`.
+the minimum rebinned association statistics in 2018 are:
 
-Two questions must be answered before finalization:
+- DPS-ccbar: 6724.7470
+- DPS-bbbar: 972.5331
+- SPS-ccbar: 6734.8645
+- SPS-bbbar: 36.4446
 
-1. Is there a J/psi-pT-only association rebinning with `N_eff >= 25` in every D*-pT bin and all four 2018 components?
-2. Does the validated 2017 association J/psi-pT binning `[25, 100]` GeV also satisfy that requirement in 2018 while retaining D*-pT edges `[4, 10, 20, 30, 60]` GeV?
+The global minimum is **36.4446**, above the required `N_eff >= 25`. This is also the finest J/psi-pT-only 2018 candidate that passes. Therefore:
 
-If the second answer is yes, 2018 can be finalized on the same nominal association grid as 2017. If it is no, the next step is a **common 2017+2018 two-dimensional rebinning study**; do not silently use different nominal efficiency binnings by year.
+- the 2017 and 2018 nominal association maps can use exactly the same grid;
+- no D*-pT rebinning is required;
+- no year-dependent nominal association discretization is introduced;
+- the sparse original SPS-bbbar fine bin is retained only as diagnostic information.
 
-The existing validated `tools/finalize_2017_common.py` remains frozen. A year-generic write-capable finalizer should only be introduced after the 2018 audit fixes the common binning decision.
+## Current gate: write and validate the 2018 final ROOT files
+
+The validated 2017-specific `tools/finalize_2017_common.py` remains frozen as a reference.
+
+The new year-aware finalizer is:
+
+```bash
+python tools/finalize_efficiencies_common.py --year 2018
+```
+
+It defaults to the common `[25,100]` GeV J/psi-pT association grid, retains the existing D*-pT edges, precomputes all four rebinned association maps before writing any file, enforces `N_eff >= 25`, and reconstructs the nominal association central values and uncertainties from the raw weighted sums.
+
+After finalization, the four outputs must be audited before they are propagated into the physics fit. Only then should the downstream analysis be switched to
+
+```text
+ANALYSIS_YEARS = ["2017", "2018"]
+ALLOW_YEAR_PROXY = False
+```
+
+with same-year efficiency correction before year combination.
 
 ## When 2016 becomes available
 
