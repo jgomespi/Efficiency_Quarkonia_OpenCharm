@@ -4,7 +4,7 @@
 
 The current intermediate physics result uses **2017 + 2018** only.
 
-- 2017: four final efficiency maps already produced and validated.
+- 2017: four final efficiency maps exist, but their ROOT axis metadata is being re-audited before cross-year integration.
 - 2018: full NanoAODPlus/Coffea production, common-grid audit, and four final efficiency ROOT files completed successfully.
 - 2016APV/2016: not included in the current result because the corresponding productions/tape recalls are still in progress.
 
@@ -25,10 +25,10 @@ The nominal correction uses the efficiency map corresponding to the actual year 
 
 | component | 2016APV | 2016 | 2017 | 2018 |
 |---|---|---|---|---|
-| DPS-ccbar | pending integration | pending integration | final | final |
-| DPS-bbbar | pending integration | pending integration | final | final |
-| SPS-ccbar | production/recall in progress | production/recall in progress | final | final |
-| SPS-bbbar | pending integration | pending integration | final | final; recoverable empty fine-grid diagnostic bin documented |
+| DPS-ccbar | pending integration | pending integration | final values exist; axis metadata audit pending | final |
+| DPS-bbbar | pending integration | pending integration | final values exist; axis metadata audit pending | final |
+| SPS-ccbar | production/recall in progress | production/recall in progress | final values exist; axis metadata audit pending | final |
+| SPS-bbbar | pending integration | pending integration | final values exist; axis metadata audit pending | final; recoverable empty fine-grid diagnostic bin documented |
 
 The detailed 2018 production/finalization record is in
 `docs/2018_PRODUCTION_RECORD.md`.
@@ -104,7 +104,7 @@ the minimum rebinned association statistics in 2018 are:
 - SPS-ccbar: 6734.8645
 - SPS-bbbar: 36.4446
 
-The global minimum is **36.4446**, above the required `N_eff >= 25`. This is also the finest J/psi-pT-only 2018 candidate that passes. Therefore 2017 and 2018 use exactly the same nominal association grid and no D*-pT rebinning is required.
+The global minimum is **36.4446**, above the required `N_eff >= 25`. This is also the finest J/psi-pT-only 2018 candidate that passes. Therefore 2017 and 2018 are intended to use exactly the same nominal association grid and no D*-pT rebinning is required.
 
 ## 2018 final efficiency ROOT files: complete
 
@@ -127,26 +127,37 @@ The finalizer reconstructs `eff_asso_pt`, its uncertainties and `N_eff` from the
 
 The final minimum association `N_eff` values are 6724.75, 972.53, 6734.86 and 36.44 for DPS-ccbar, DPS-bbbar, SPS-ccbar and SPS-bbbar respectively.
 
-## Current gate: final 2017 vs 2018 compatibility audit
+## Current gate: diagnose final ROOT axis metadata
 
-Before changing the physics fit, run the read-only final cross-year gate:
+The first final 2017-vs-2018 compatibility audit ran on 2026-09-04 and returned `FINAL EFFICIENCY GATE: BLOCK`.
+
+The failure pattern is highly structured:
+
+- all 2017 components show central/error/N_eff axis-metadata mismatches for the non-association maps;
+- the 2017 `eff_asso_pt` numerical array has the expected `1 x 4` shape but its stored axis edges are not recognized as `[25,100] x [4,10,20,30,60]` by the audit;
+- all 2018 central axes then differ from the common reference established from the first 2017 file;
+- the central-value arrays themselves are shape-compatible across years and the 2018/2017 ratios can be computed.
+
+This pattern is being treated as an **axis serialization / legacy-final-file contract issue until proven otherwise**, not as evidence of a physics-efficiency failure. It must not be bypassed or hidden by relaxing the gate.
+
+The next read-only diagnostic is:
 
 ```bash
-python tools/audit_final_2017_2018.py
+python tools/diagnose_final_axes_and_sparse_bins.py
 ```
 
-It checks all eight final ROOT files, requires identical axes between 2017 and 2018, verifies finite/physical central values and uncertainties, reconstructs the nominal association map from the stored raw weighted sums, enforces the common association grid and `N_eff >= 25`, and prints 2018/2017 central-value ratios for every component and map.
+It prints the exact stored central/error/N_eff axes and all bins with `N_eff < 25`. Only after the actual edge values are known will a repair decision be made. If the 2017 source differential ROOT files have correct axes, the preferred repair is to regenerate only the lightweight 2017 final ROOTs from existing local source ROOTs; the expensive NanoAOD processing must not be rerun.
 
-If this gate passes and the cross-year ratios show no suspicious discontinuities, the efficiency stage is complete for the preliminary 2017+2018 analysis. The downstream analysis should then use
+The cross-year central-value diagnostics from the blocked audit are retained as useful non-gating information. In particular, `eff_asso_pt` is close between years (roughly within a few percent for all four components). The larger excursions occur in `acc_*` and `eff_trigger`, especially in sparse SPS-bbbar bins, and will be inspected together with the low-`N_eff` diagnostic before physics integration.
+
+Do not switch the physics fit to 2017+2018 until this axis contract gate is resolved. The intended downstream configuration remains
 
 ```text
 ANALYSIS_YEARS = ["2017", "2018"]
 ALLOW_YEAR_PROXY = False
 ```
 
-and apply the efficiency correction separately within each year before the corrected year contributions are combined.
-
-Do not average the 2017 and 2018 efficiency maps into a single map, and do not use one year as a proxy for the other.
+with same-year correction before year combination. Do not average the 2017 and 2018 efficiency maps into a single map, and do not use one year as a proxy for the other.
 
 ## When 2016 becomes available
 
