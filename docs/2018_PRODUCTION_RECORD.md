@@ -96,25 +96,66 @@ If a downstream ROOT file ever needs to be regenerated without changing the
 processed event sample, use the existing merged cache through the driver's
 `--from-cache` mode instead of re-reading the Caltech NanoAODPlus files.
 
-## Next gate: finalization audit
+## 2018 finalization audit: result
 
-Before writing final 2018 efficiency maps, run the read-only common audit:
+The first full audit was run on 2026-09-04 with
 
 ```bash
 python tools/audit_efficiencies_common.py --year 2018
 ```
 
-The audit checks:
+All non-association maps passed the numerical checks. The original fine
+`eff_asso_pt` grid is `[25,30,50,70,100] x [4,10,20,30,60]` GeV.
 
-1. all seven maps and their weighted uncertainty / raw-statistics payloads;
-2. finite values, physical ranges, denominator validity and `N_eff`;
-3. all contiguous J/psi-pT rebinning candidates for `eff_asso_pt`;
-4. the `N_eff >= 25` requirement across all four MC components;
-5. explicit compatibility with the validated 2017 association J/psi-pT binning
-   `[25, 100]` GeV while retaining the original D*-pT bins.
+The only source-grid pathology is in `SPS-bbbar/eff_asso_pt`: one original fine
+bin has zero denominator statistics, which produces one non-finite central
+value, uncertainty and `N_eff` on that fine grid. This is not a nominal-map
+blocker because `eff_asso_pt` is explicitly reconstructed after J/psi-pT
+rebinning from the raw weighted sums. The audit code was updated to distinguish
+such genuine all-zero fine-grid bins from non-recoverable numerical pathologies.
 
-The audit is deliberately non-destructive. The 2018 final ROOT files should be
-written only after this output has been reviewed. If the 2017-reference binning
-fails in 2018, a common 2017+2018 two-dimensional association rebinning must be
-designed before finalization rather than silently using different nominal
-binnings in the two years.
+The decisive common-grid result is:
+
+| component | minimum N_eff after J/psi pT -> [25,100] GeV |
+|---|---:|
+| DPS-ccbar | 6724.7470 |
+| DPS-bbbar | 972.5331 |
+| SPS-ccbar | 6734.8645 |
+| SPS-bbbar | 36.4446 |
+
+The global minimum is **36.4446**, above the nominal `N_eff >= 25` requirement.
+The finest J/psi-pT-only candidate that passes in 2018 is therefore exactly
+`[25,100]` GeV, i.e. the already validated 2017 nominal association binning.
+The original D*-pT edges `[4,10,20,30,60]` GeV can be retained. No additional
+D*-pT rebinning is required for the 2017+2018 common map.
+
+## Finalization implementation
+
+`tools/finalize_efficiencies_common.py` is the year-aware finalizer. It defaults
+to the validated common association grid:
+
+```text
+J/psi pT: [25,100] GeV
+D* pT:    [4,10,20,30,60] GeV
+```
+
+Before writing any file it precomputes and validates the rebinned association
+map for all four components. The nominal `eff_asso_pt`, its uncertainties and
+`N_eff` are reconstructed from the rebinned raw `sumw/sumw2`. The sparse
+original fine map is retained only under `diagnostic/`.
+
+The validated 2017-specific finalizer is intentionally left untouched as a
+reference. The generic finalizer must first be exercised on 2018 and its four
+outputs audited before it is used for any other year.
+
+Next command:
+
+```bash
+python tools/audit_efficiencies_common.py --year 2018
+python tools/finalize_efficiencies_common.py --year 2018
+```
+
+The first command should now report `PASS WITH WARNINGS`, with the warning
+confined to the recoverable empty fine-grid SPS-bbbar association bin. The
+second command should write the four 2018 final ROOT files under
+`output/efficiency/final/` and validate their nominal maps atomically.
