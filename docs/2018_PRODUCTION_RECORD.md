@@ -176,21 +176,43 @@ DPS-ccbar, DPS-bbbar, SPS-ccbar, and SPS-bbbar respectively. Values above one
 are allowed for `acc_dimu` because it is a weighted response ratio rather than
 a strict binomial efficiency.
 
-## Next gate: final 2017 vs 2018 cross-year audit
+## Final 2017 vs 2018 cross-year audit: currently blocked on axis contract
 
-The final 2018 files must now be compared directly with the already validated
-2017 final files before they are propagated into the physics fit. The read-only
-tool is:
+The first execution of
 
 ```bash
 python tools/audit_final_2017_2018.py
 ```
 
-It checks all eight final ROOT files, requires identical axes across years,
-verifies finite/physical central values and uncertainties, reconstructs the
-nominal association central values and `N_eff` from stored raw weighted sums,
-enforces the common association grid and `N_eff >= 25`, and prints
-2018/2017 central-value ratios for every map and component.
+returned `FINAL EFFICIENCY GATE: BLOCK`.
 
-Only after that gate passes and the cross-year ratios are inspected should the
-physics analysis be switched to year-specific 2017+2018 efficiency correction.
+The numerical efficiency arrays are shape-compatible and the diagnostic
+2018/2017 ratios were produced successfully. The association ratios are close to
+unity for all components. However, the ROOT axis metadata fail the strict final
+contract:
+
+- every 2017 component reports central/error/N_eff axis mismatches for the
+  non-association maps;
+- the 2017 final `eff_asso_pt` arrays are `1 x 4`, but their stored axes are not
+  recognized as the intended `[25,100] x [4,10,20,30,60]` GeV grid;
+- the common-axis reference is established from 2017, so every 2018 map then
+  reports an axis mismatch against that reference.
+
+The pattern is systematic and is therefore being treated as a likely legacy
+ROOT serialization/final-file metadata issue until the actual stored edges are
+printed. It is **not** being bypassed by weakening the audit.
+
+The next read-only diagnostic is
+
+```bash
+python tools/diagnose_final_axes_and_sparse_bins.py
+```
+
+which prints the exact central/error/N_eff edges and every bin with
+`N_eff < 25`. If the 2017 differential source ROOT files have the correct axes,
+the expected repair is a lightweight regeneration of only the four 2017 final
+ROOT files from those existing local products. No NanoAODPlus/Coffea remote
+production should be repeated.
+
+The physics fit remains blocked from 2017+2018 integration until this axis
+contract is resolved and the final audit is rerun successfully.
