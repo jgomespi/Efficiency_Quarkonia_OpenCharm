@@ -5,7 +5,7 @@ its efficiency-response systematics, and the mixed-event cross-check from the
 inputs already stored in Joao's CERN area. It also preserves the active upstream
 efficiency and mixing-production code. Other physics projects are outside its scope.
 
-Start with **[the student reproduction guide](docs/REPRODUCE.md)**. It explains the
+Start with **[the reproduction guide](docs/REPRODUCE.md)**. It explains the
 physics goal, each program, the input contracts, and the exact execution order.
 
 | Task | Entry point |
