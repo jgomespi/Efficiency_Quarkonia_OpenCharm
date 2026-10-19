@@ -1,5 +1,10 @@
 # J/psi + D* production in Run 2
 
+> Migration preview: the dedicated `jgomespi/JPsiDstar_Run2` repository has not
+> been created yet. This branch publishes the prepared content for review.
+> The new clone URL below becomes usable after that repository is created.
+> See [migration status](MIGRATION_STATUS.md).
+
 This repository collects the code needed to rerun the current J/psi + D* template fit,
 its efficiency-response systematics, and the mixed-event cross-check from the
 inputs already stored in Joao's CERN area. It also preserves the active upstream
