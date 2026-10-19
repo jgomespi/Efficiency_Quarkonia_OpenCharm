@@ -1,4 +1,4 @@
-# A student guide to reproducing J/psi + D* results
+# A guide to reproducing J/psi + D* results
 
 ## What this analysis measures
 
