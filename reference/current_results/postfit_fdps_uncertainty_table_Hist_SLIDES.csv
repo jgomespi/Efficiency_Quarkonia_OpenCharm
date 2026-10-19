@@ -1,0 +1,9 @@
+contribution,down,up,quantity_type,status_note,down_percent_points,up_percent_points
+Statistical profile (data + finite MC/response statistics),0.020657056697378117,0.020563779350052037,profile interval,"finite MC, efficiency-map replicas, stitching and composition are jointly covaried",2.065705669737812,2.056377935005204
+Finite MC / response statistics,,,covariance component,included in statistical profile; not reduced to an independent scalar,,
+Efficiency response systematics (all approved),0.004254507472937702,0.004124041478659622,quadrature-equivalent profile increment,year + efficiency-binning covariances; sPlot variants when available,0.42545074729377025,0.4124041478659622
+Year response,0.004199954650129234,0.004199954650129234,dedicated variation envelope,temporary until 2016APV/2016 maps are available,0.4199954650129234,0.4199954650129234
+Efficiency binning,0.004342505216002601,0.004342505216002601,dedicated variation envelope,propagated through normalized-shape covariance,0.4342505216002601,0.4342505216002601
+Signal-yield / sPlot fit variants,,,pending,pending input; not invented,,
+Adopted MC-shape component,0.06058083773609732,0.06912077216830745,quadrature-equivalent profile increment,fixed adopted 25% normalized-shape floor,6.058083773609732,6.9120772168307445
+Total profile,0.06414711783114913,0.07223266494058209,profile interval,nominal HIST likelihood prescription,6.414711783114912,7.223266494058208

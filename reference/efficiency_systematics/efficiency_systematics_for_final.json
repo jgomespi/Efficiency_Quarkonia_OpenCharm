@@ -1,0 +1,31 @@
+{
+  "analysis": "JpsiDstar 2D profile likelihood",
+  "data_period": "full Run2",
+  "efficiency_nominal_response": "luminosity-weighted 2017+2018",
+  "nominal_fDPS": 0.37933529817639183,
+  "year_response": {
+    "temporary_until_2016_available": true,
+    "delta_fDPS_envelope": 0.004199954650129234,
+    "delta_fDPS_rms": 0.0034383962965798902,
+    "covariance_file": "year_response_covariance.npy"
+  },
+  "efficiency_binning": {
+    "delta_fDPS_envelope": 0.004342505216002601,
+    "delta_fDPS_rms": 0.0028088131802338316,
+    "covariance_file": "efficiency_binning_covariance.npy"
+  },
+  "raw_map_reconstruction_closure": {
+    "status": "PASS",
+    "max_abs_difference": 0.0,
+    "note": "technical reconstruction closure only; not an independent physics closure"
+  },
+  "independent_efficiency_closure": {
+    "status": "PENDING_INDEPENDENT_TEST_SAMPLE",
+    "assigned_uncertainty": null
+  },
+  "splot_model_systematic": {
+    "status": "PENDING_VARIANT_SWEIGHTS",
+    "assigned_uncertainty": null
+  },
+  "combined_efficiency_response_covariance_file": "efficiency_response_systematic_covariance_total.npy"
+}

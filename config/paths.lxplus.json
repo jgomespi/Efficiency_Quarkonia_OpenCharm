@@ -1,0 +1,10 @@
+{
+  "project_root": "/eos/home-j/jgomespi/SWAN_projects/Associated_Production_JPsi_Dstar",
+  "data_root": "/eos/home-j/jgomespi/SWAN_projects/Associated_Production_JPsi_Dstar/Template_fit",
+  "efficiency_root": "/eos/home-j/jgomespi/SWAN_projects/Associated_Production_JPsi_Dstar/Template_fit/Data/efficiency_final_2017_2018",
+  "mixing_root": "/eos/home-j/jgomespi/SWAN_projects/Associated_Production_JPsi_Dstar/condor_data_preparation/output_noHLT_preassoc_v1",
+  "mixing_glob": "Run2/*/*/*/output_mixing_*.coffea",
+  "expected_mixing_files": 772,
+  "analysis_python_candidate_from_startup": "/eos/user/j/jgomespi/.mamba-jpsidstar/envs/python310-jpsidstar/bin/python",
+  "analysis_python_import_probe_record": "reference/lxplus_first_attempt_20261019.json"
+}
