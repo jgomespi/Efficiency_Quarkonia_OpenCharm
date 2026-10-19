@@ -6,5 +6,5 @@
   "mixing_glob": "Run2/*/*/*/output_mixing_*.coffea",
   "expected_mixing_files": 772,
   "analysis_python_candidate_from_startup": "/eos/user/j/jgomespi/.mamba-jpsidstar/envs/python310-jpsidstar/bin/python",
-  "python_candidate_has_not_yet_been_probed": true
+  "analysis_python_import_probe_record": "reference/lxplus_first_attempt_20261019.json"
 }

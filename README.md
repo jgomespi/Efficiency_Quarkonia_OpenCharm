@@ -24,8 +24,11 @@ The source collection was made on `lxplus9114.cern.ch` on **19 October 2026**.
 The original lxplus and EOS directories were preserved. See
 [source selection](docs/SOURCE_SELECTION.md) and [slide cross-validation](docs/SLIDE_CROSS_VALIDATION.md).
 
-**Validation status:** the selected notebook code has been checked against the
-collected sources; only path configuration changed. A fresh full execution on
-lxplus is pending. The collected code reproduces the separate template and
-data-driven determinations, but does not contain the final-slide combination
-procedure. The guide records this precise remaining gap.
+**Validation status:** the first packaged lxplus run passed environment and input
+checks and completed the efficiency-systematics stage. The nominal stage stopped
+at a figure-layout check; its eight-panel layout has been adjusted and checked
+locally, with a fresh nominal lxplus execution pending. Changes to the collected
+notebooks are limited to paths and that plot's geometry. The collected outputs
+contain the separate template and data-driven determinations; the final-slide
+combination procedure remains absent from the collected code. The guide records
+this remaining gap and the command to reuse the completed systematics stage.

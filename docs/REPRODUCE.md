@@ -30,7 +30,7 @@ task. It is separate from the existing efficiency checkout and EOS project.
 ```bash
 cd /afs/cern.ch/user/j/jgomespi/private/workspace/JPsiDstar/reproducible_release
 git clone --branch joao/jpsidstar-reproducible-release \
-  git@github.com:jgomespi/Efficiency_Quarkonia_OpenCharm.git .
+  https://github.com/jgomespi/Efficiency_Quarkonia_OpenCharm.git .
 ```
 
 Run the clone command only in the empty directory. Existing checkouts can inspect
@@ -63,10 +63,12 @@ The collected `startup.sh` points to this candidate interpreter:
 /eos/user/j/jgomespi/.mamba-jpsidstar/envs/python310-jpsidstar/bin/python
 ```
 
-Its path comes from an actual source file; its current executability and imports
-must be verified. The old README mentions Python 3.10.20, NumPy 1.22.4, Coffea
-0.7.7 and Awkward 1.7.0. Notebook kernel metadata also contains a different Python
-version, so metadata is insufficient to define the runtime.
+On 19 October 2026, the first packaged lxplus execution verified this interpreter
+as Python 3.10.20 and successfully imported all required packages. The observed
+versions are recorded in `reference/lxplus_first_attempt_20261019.json`, including
+NumPy 1.22.4, Matplotlib 3.5.0, Coffea 0.7.7 and Awkward 1.7.0. Each new execution
+still captures its own environment: notebook kernel metadata is insufficient to
+define the runtime.
 
 ```bash
 bash scripts/run_lxplus.sh environment
@@ -145,8 +147,11 @@ nohup bash scripts/run_lxplus.sh nominal --run-dir runs/reproduction_001 \
 
 Use a new run name for each attempt. Follow the log with
 `tail -f logs/reproduction_001.log`. The top-level run record and the notebook log
-identify completion or the exact failed cell. Completion of the command has not
-yet been verified on lxplus for this newly packaged branch.
+identify completion or the exact failed cell. The first packaged lxplus attempt
+passed input preflight and finished the efficiency-systematics notebook, then
+stopped at a nominal plotting-layout check in cell 21. The corrected 4-by-2 figure
+layout has passed local synthetic rendering checks; a complete nominal execution
+on lxplus is still pending.
 
 ## Regenerate the covariance inputs as well
 
@@ -161,6 +166,27 @@ using a separately regenerated bundle, use `--systematics-dir /absolute/path`.
 
 This producer was archived in the original EOS project, but is a genuine
 dependency of the final uncertainties. No other archived notebook is required.
+
+### Reuse a completed systematics stage after a failed nominal run
+
+For the recorded first attempt, `runs/full_reproduction_001/efficiency_systematics`
+is complete. After updating the release checkout, rerun the nominal notebook in
+a new output directory and explicitly use that regenerated bundle:
+
+```bash
+git pull --ff-only origin joao/jpsidstar-reproducible-release
+mkdir -p logs
+nohup bash scripts/run_lxplus.sh nominal \
+  --run-dir runs/nominal_reproduction_002 \
+  --systematics-dir runs/full_reproduction_001/efficiency_systematics \
+  > logs/nominal_reproduction_002.log 2>&1 &
+```
+
+Use this command after the earlier process has exited. It preserves the first
+attempt and recomputes the nominal notebook from its first cell, while reusing
+the completed covariance stage. Inspect the outer log and
+`runs/nominal_reproduction_002/nominal/execution.log` for progress. A finished run
+also has `run_status.json` and `nominal/reproduction_validation.json`.
 
 ## What happens inside the nominal notebook
 

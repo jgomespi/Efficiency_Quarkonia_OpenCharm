@@ -12,6 +12,9 @@
       "changed_cells_are_path_configuration_only": [
         3,
         6
+      ],
+      "changed_cells_are_presentation_only": [
+        21
       ]
     },
     {
@@ -206,9 +209,15 @@
     ]
   },
   "validation": {
-    "full_lxplus_rerun": "PENDING",
+    "full_lxplus_rerun": "PENDING_AFTER_NOMINAL_CELL_21_LAYOUT_FAILURE",
     "complete_slide_27_reproduction": false,
-    "path_only_ast_comparison": "PASS",
+    "path_and_plot_geometry_only_ast_comparison": "PASS",
+    "first_lxplus_attempt": "reference/lxplus_first_attempt_20261019.json",
+    "lxplus_required_imports": "PASS",
+    "lxplus_frozen_input_preflight": "PASS",
+    "lxplus_efficiency_systematics_execution": "COMPLETED",
+    "local_synthetic_mc_plot_layout": "PASS_MATPLOTLIB_3.10.8_WITH_MPLHEP_0.3.15_CMS_STYLE",
+    "original_lxplus_renderer_layout_recheck": "PENDING_MATPLOTLIB_3.5.0",
     "systematic_covariance_checks": "PASS",
     "dd_uncertainty_quadrature": "PASS",
     "18_attached_root_hashes": "PASS",

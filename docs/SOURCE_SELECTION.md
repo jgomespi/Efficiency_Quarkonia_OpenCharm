@@ -39,12 +39,15 @@ repositories. Their Git metadata was not repaired or reinitialized. The release
 branch uses the valid GitHub efficiency repository as its history base and makes
 the complete J/psi+D* layout explicit.
 
-Only configuration/path assignments changed in the copied notebooks. AST
-comparison confirmed that all other code in the changed cells is unchanged;
-all other cell sources are byte-for-byte unchanged. Physics, likelihood,
-random seeds, replica counts, fitted parameters and the selected bin edges were
-not rewritten. Exact original source fingerprints and changed cell indices are
-recorded in `reference/source_provenance.json`.
+The initial copied notebooks changed only configuration/path assignments. After
+the first lxplus attempt exposed a layout collision, nominal cell 21 also changed
+the physical height of its 4-by-2 MC diagnostic figure and centered its y-axis
+labels. The strict figure audit remains enabled. AST comparison confirms that
+the remaining code in this cell is unchanged, and all other non-configuration
+cell sources are byte-for-byte unchanged. Physics, likelihood, random seeds,
+replica counts, fitted parameters and the selected bin edges were not rewritten.
+Exact original source fingerprints and changed cell indices are recorded in
+`reference/source_provenance.json`.
 
 ## Validation performed while packaging
 
@@ -58,6 +61,20 @@ recorded in `reference/source_provenance.json`.
 - Checked that the compact active mixing catalog contains 772 jobs and removes
   the two documented bad input URLs.
 
-A full packaged lxplus execution and an actual environment capture are pending.
-The final-slide combination provenance is also unresolved. These are explicit
-remaining tasks, not completed checks.
+## First packaged lxplus attempt
+
+The terminal output supplied on 19 October 2026 confirms successful environment
+imports, all 18 ROOT fingerprints, and the exact 772-file mixing set. The
+efficiency-systematics notebook completed. The nominal notebook stopped in cell
+21 when the plot audit detected collisions between decorations on successive
+rows of the eight-panel MC figure. This is recorded in
+`reference/lxplus_first_attempt_20261019.json`.
+
+The enlarged figure and centered y labels pass the existing strict audit for both
+observables in a local synthetic rendering check using Matplotlib 3.10.8 and the
+official mplhep 0.3.15 CMS style. A deliberately compressed figure still fails,
+confirming that the collision audit remains active. The original lxplus failure
+was observed with Matplotlib 3.5.0; the exact renderer is unavailable locally, and
+the original-size figure does not fail with the local renderer. This local check
+does not establish successful physics reproduction. The nominal lxplus rerun and
+the final-slide combination provenance remain pending.
