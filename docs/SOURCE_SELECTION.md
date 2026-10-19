@@ -107,3 +107,10 @@ changed template result, incomplete mixing reads, a missing summary quantity and
 inconsistent regional normalization. CLI tests checked exit codes and preservation
 of the first report. These are validator tests, not an independent CERN rebuild.
 The trusted final-slide combination provenance remains unresolved.
+
+Joao subsequently ran the updated saved-output validator on lxplus at commit
+`e45d882`. The `rebuilt-772` reference passed, while the historical comparison
+remained explicitly different. This confirmation did not rerun the notebooks.
+Native presentation notes and comments were also checked for the missing
+combination; neither supplied it. The original combination calculation remains
+a source-provenance blocker.

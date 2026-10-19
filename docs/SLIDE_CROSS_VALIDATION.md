@@ -47,6 +47,11 @@ documented separately and does not replace the trusted slide result.
 Revalidating this run against its recorded complete-pool baseline is not an
 independent repeat of the calculation.
 
+The saved-output `rebuilt-772` validation subsequently passed on lxplus with
+validator commit `e45d882`, preserving the historical difference. A further read
+of the native presentation's notes and comments did not recover the combination
+algorithm or the template/DD covariance.
+
 The separate determinations share data and a fitted-purity correction. A new
 inverse-variance average or product of independent likelihoods would introduce
 a statistical assumption; matching rounded slide values would not prove its

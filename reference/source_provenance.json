@@ -221,6 +221,18 @@
     "historical_reference_checks": "18_OF_19_PASS; DD_CENTRAL_DIFFERS_DUE_TO_771_VS_772_MIXING_INPUTS",
     "mixing_input_references": "reference/mixing_reproduction_contracts.json",
     "rebuilt_772_reference": "ESTABLISHED_FROM_ONE_OBSERVED_CERN_RUN; INDEPENDENT_SECOND_REBUILD_NOT_VERIFIED",
+    "lxplus_saved_output_revalidation": "PASS_REBUILT_772_WITH_VALIDATOR_E45D882; HISTORICAL_COMPARISON_DIFFERS",
+    "combination_provenance_search": {
+      "status": "PENDING_ORIGINAL_CALCULATION",
+      "drive_file_id": "1nmzABAEh0_bxGE9bh7koG1XSZRKpzeZo__uZERf0wpQ",
+      "drive_modified_time": "2026-10-07T11:38:09.864Z",
+      "drive_revision_at_check": "i22-ol5ezBswIQ",
+      "slide_count": 28,
+      "nonempty_speaker_notes_found": 0,
+      "comment_threads_found": 0,
+      "final_slide_id": "g3fa64e74ac8_1_56",
+      "finding": "No combination algorithm or method-to-method covariance recovered from collected source, deck notes or comments. The existing sigma_eff external-input uncertainty combination is a different calculation."
+    },
     "validator_reference_and_failure_case_tests": "PASS",
     "local_synthetic_mc_plot_layout": "PASS_MATPLOTLIB_3.10.8_WITH_MPLHEP_0.3.15_CMS_STYLE",
     "original_lxplus_renderer_layout_recheck": "PASS_NOMINAL_NOTEBOOK_COMPLETED_WITH_MATPLOTLIB_3.5.0",

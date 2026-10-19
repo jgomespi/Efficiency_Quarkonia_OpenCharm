@@ -289,6 +289,12 @@ and `run_status.json` remain records of the earlier comparison failure. A pass
 here establishes agreement of saved outputs with the explicitly selected
 reference; it does not constitute a second independent rebuild.
 
+This saved-output check was executed on lxplus on 19 October 2026 with validator
+commit `e45d882`: selected-reference validation **PASS**, historical numerical
+reference **DIFFERS**, historical result contract **NOT REPRODUCED**. The original
+reports were preserved. The result is recorded in
+`reference/lxplus_nominal_reproduction_002_20261019.json`.
+
 For an explicit historical comparison, use `--mixing-reference historical`.
 That writes `reproduction_validation_historical.json` and is expected to fail
 for the complete-pool run. Passing the complete-pool check never declares the
@@ -311,6 +317,11 @@ Consequently, this branch does not hard-code the slide result or invent an
 independence assumption. `full_slide_27_reproduced` remains false. Recovering the
 original combination procedure is necessary before claiming that the complete
 final slide can be regenerated.
+
+A further read of the native deck on 19 October found no populated speaker notes
+and no comment threads supplying the calculation. The current known blocker is
+the original combined-f_DPS calculation and its treatment of the shared data and
+post-fit purity, not execution of the two packaged analysis notebooks.
 
 ## Known analysis scope
 

@@ -31,6 +31,7 @@ sigma_eff reproduce the historical reference. The complete mixing rebuild reads
 this changes DD f_DPS from 0.3404222 to 0.3409443. Both input references and the
 algebraic explanation are preserved. The launcher validates complete rebuilds
 against the explicit `rebuilt-772` reference and still reports the historical
-difference. This baseline comes from one observed CERN rebuild; rechecking its
-saved outputs is not a second independent execution. See the guide for the
+difference. The selected-reference check has also passed on lxplus. This baseline
+comes from one observed CERN rebuild; rechecking its saved outputs is not a second
+independent execution. See the guide for the
 quick validation command. The final-slide combination provenance remains pending.

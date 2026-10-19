@@ -9,6 +9,17 @@
   "original_checks_passed": 18,
   "original_checks_total": 19,
   "original_failed_check": "data_driven_fDPS",
+  "saved_output_revalidation": {
+    "evidence": "Joao's lxplus terminal output supplied on 19 October 2026 after pulling e45d882",
+    "validator_commit": "e45d882b5dd61b93bcceb176a6e193dc69cb384c",
+    "selected_mixing_reference": "rebuilt-772",
+    "selected_reference_validation": "PASS",
+    "historical_numerical_reference": "DIFFERS",
+    "historical_result_contract": "NOT REPRODUCED",
+    "full_final_slide_reproduction": "PENDING combination provenance",
+    "output": "runs/nominal_reproduction_002/nominal/reproduction_validation_rebuilt_772.json",
+    "notebooks_executed_again": false
+  },
   "observed_validation_fields": {
     "fDPS": 0.3791580802688369,
     "stat_down": 0.020657056704700503,
