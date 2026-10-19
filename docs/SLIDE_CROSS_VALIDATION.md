@@ -3,7 +3,9 @@
 Reference: [the 30 September Drive deck](https://docs.google.com/presentation/d/1nmzABAEh0_bxGE9bh7koG1XSZRKpzeZo__uZERf0wpQ/edit?usp=drivesdk),
 modified 7 October 2026. The deck PDF was exported and the result/uncertainty
 slides were inspected visually. The RooFit teaching presentation is excluded.
-Comparisons below use collected lxplus results, not a fresh packaged execution.
+The main table compares the collected historical results with the trusted deck.
+The completed packaged CERN execution and its DD input difference are recorded
+separately below.
 
 | Slides | Content | Code/output provenance | Current finding |
 |---|---|---|---|
@@ -28,6 +30,22 @@ Comparisons below use collected lxplus results, not a fresh packaged execution.
 
 The final notebook implements a legacy `6x6` configuration key with actual
 `4x4` bin edges. Filename labels must not be interpreted as a 36-bin fit.
+
+## Complete mixing rebuild on 19 October 2026
+
+The packaged nominal notebook completed on lxplus. Its template f_DPS, errors,
+10,000-toy GOF and template-based sigma_eff reproduce the table above. Its DD
+result is **34.0944 +/- 5.5130%**, rather than the historical
+**34.0422 +/- 5.5063%**. Rounded to one decimal, these are 34.1 and 34.0%.
+
+The historical cache was built after one of 772 mixing files failed to load;
+the complete rebuild read all 772. Data regional fraction, selected region and
+post-fit purity agree. The changed mixed regional fraction accounts algebraically
+for the full 0.0522 percentage-point DD shift. The complete-pool baseline is
+documented separately and does not replace the trusted slide result.
+`historical_result_contract_passed` remains false for this rebuilt input set.
+Revalidating this run against its recorded complete-pool baseline is not an
+independent repeat of the calculation.
 
 The separate determinations share data and a fitted-purity correction. A new
 inverse-variance average or product of independent likelihoods would introduce

@@ -46,7 +46,7 @@ need to change for this reproduction.
 | `scripts/run_reproduction.py` | Set paths, check inputs, allocate new outputs and execute stages | `config/paths.lxplus.json` | Input/environment records, logs, executed notebook copies and run status |
 | `scripts/execute_notebook_stdlib.py` | Execute every code cell in notebook order with one shared Python namespace | One selected notebook | Executed or partial notebook and the failing cell on error |
 | `scripts/capture_environment.py` | Record the interpreter, import results and installed package versions | The Python actually running it | `environment.json` |
-| `scripts/validate_reproduction.py` | Compare a fresh nominal run with the collected current-code result | A new nominal output directory | `reproduction_validation.json` |
+| `scripts/validate_reproduction.py` | Compare saved results with the explicit historical or complete-mixing reference; check mixing completeness and DD normalization | One nominal output directory and `--mixing-reference` | A separate `reproduction_validation_historical.json` or `reproduction_validation_rebuilt_772.json` |
 | `efficiency/nanoAODplus_efficiency.py` | Produce component/year differential efficiency payloads | Configured NanoAOD samples and calibration files | ROOT histograms, raw weighted sums and input manifests |
 | `efficiency/tools/refinalize_2017_2018_common.py` | Reconstruct final maps on the selected common grids | Eight already-produced differential efficiency ROOT files | Eight final efficiency ROOT files |
 | `preparation/prepare_mixing.py` | Build candidate reservoirs for event mixing | Frozen raw-data filelists | One `output_mixing_*.coffea` per job |
@@ -130,7 +130,9 @@ bash scripts/run_lxplus.sh nominal
 This is the shortest route to rerun the current final physics notebook. It uses
 the frozen efficiency-response covariances, verifies the ROOT inputs, rebuilds
 the mixed-event cache in the new run directory, executes the notebook, and
-compares the numerical result with the recorded current-code reference.
+compares the numerical result with the recorded complete 772-file mixing
+reference. The historical numerical comparison is also included in the report.
+The two references are explained below; their numerical tolerances are unchanged.
 
 The launcher resets inherited `JPSIDSTAR_*` development overrides and selects
 high-statistics mode. The source defaults contain 5,000 model replicas, 10,000
@@ -147,11 +149,10 @@ nohup bash scripts/run_lxplus.sh nominal --run-dir runs/reproduction_001 \
 
 Use a new run name for each attempt. Follow the log with
 `tail -f logs/reproduction_001.log`. The top-level run record and the notebook log
-identify completion or the exact failed cell. The first packaged lxplus attempt
-passed input preflight and finished the efficiency-systematics notebook, then
-stopped at a nominal plotting-layout check in cell 21. The corrected 4-by-2 figure
-layout has passed local synthetic rendering checks; a complete nominal execution
-on lxplus is still pending.
+identify completion or the exact failed cell. The corrected notebook completed
+on lxplus in `runs/nominal_reproduction_002`, reusing the completed systematics
+stage. Template results reproduce the historical reference. Its small DD shift
+was traced to the complete mixing pool versus the historical incomplete cache.
 
 ## Regenerate the covariance inputs as well
 
@@ -177,16 +178,17 @@ a new output directory and explicitly use that regenerated bundle:
 git pull --ff-only origin joao/jpsidstar-reproducible-release
 mkdir -p logs
 nohup bash scripts/run_lxplus.sh nominal \
-  --run-dir runs/nominal_reproduction_002 \
+  --run-dir runs/nominal_reproduction_new \
   --systematics-dir runs/full_reproduction_001/efficiency_systematics \
-  > logs/nominal_reproduction_002.log 2>&1 &
+  > logs/nominal_reproduction_new.log 2>&1 &
 ```
 
 Use this command after the earlier process has exited. It preserves the first
 attempt and recomputes the nominal notebook from its first cell, while reusing
 the completed covariance stage. Inspect the outer log and
-`runs/nominal_reproduction_002/nominal/execution.log` for progress. A finished run
-also has `run_status.json` and `nominal/reproduction_validation.json`.
+`runs/nominal_reproduction_new/nominal/execution.log` for progress. A finished run
+also has `run_status.json` and, with the current launcher defaults,
+`nominal/reproduction_validation_rebuilt_772.json`.
 
 ## What happens inside the nominal notebook
 
@@ -216,8 +218,9 @@ also has `run_status.json` and `nominal/reproduction_validation.json`.
    applies the post-fit DPS purity in the selected normalization region.
 7. **DD uncertainties.** Paired data/model refits, finite mixing statistics and
    four predefined boundary variations are propagated. The region uncertainty
-   is an absolute 0.018277 in f_DPS, or 1.83 percentage points. Its relative size
-   is about 5.37%, explaining the rounded 5.4% label in slide 26.
+   in the historical slide result is an absolute 0.018277 in f_DPS, or 1.83
+   percentage points. Its relative size is about 5.37%, explaining the rounded
+   5.4% label in slide 26. Use the newly generated budget for a complete rebuild.
 
 The historical binning key and figure filenames say **6x6**, while the explicit
 nominal edges define **4x4 = 16 bins**. This naming convention is retained to
@@ -225,22 +228,71 @@ preserve source compatibility and is recorded explicitly in the result JSON.
 
 ## How to recognize a successful numerical reproduction
 
-| Quantity | Collected current-code reference |
-|---|---:|
-| Template f_DPS | 0.3791580803 |
-| Template interval, down / up | 0.0641471178 / 0.0722326649 |
-| Data-driven f_DPS | 0.3404221631 |
-| Data-driven total uncertainty | 0.0550634451 |
-| Selected region | abs(delta_y) >= 2.2, 0 <= abs(delta_phi) <= 1.0 |
-| Toy GOF p-value | 0.5835416458 from 10,000 successful toys |
-| Template-based sigma_eff | 7.6730287876 mb |
+| Quantity | Historical cache | Complete 772-file rebuild |
+|---|---:|---:|
+| Successfully read mixing files | 771 of 772 | 772 of 772 |
+| Template f_DPS | 0.3791580803 | 0.3791580803 |
+| Template interval, down / up | 0.0641471178 / 0.0722326649 | Same at shown precision |
+| Data-driven f_DPS | 0.3404221631 | 0.3409443202 |
+| Data-driven total uncertainty | 0.0550634451 | 0.0551297022 |
+| Selected region | abs(delta_y) >= 2.2, 0 <= abs(delta_phi) <= 1.0 | Same |
+| Toy GOF p-value | 0.5835416458, 10,000 successful toys | Same |
+| Template-based sigma_eff | 7.6730287876 mb | 7.6730287876 mb |
 
-`reproduction_validation.json` records comparisons and their tolerances.
-The GOF tolerance allows three recorded Monte Carlo standard errors; the
-deterministic f_DPS tolerances are much smaller than the slide rounding.
-If a check fails, investigate the input/environment/run records before changing
-any tolerance. These checks establish computational reproduction, not completion
-of the remaining physics systematic studies.
+The launcher always rebuilds the mixing cache and explicitly selects the
+`rebuilt-772` validation reference by default. The validator checks actual read
+counts, reservoir/candidate counts, the saved regional fractions and
+`f_DPS_DD = data_region_fraction * purity / mixed_region_fraction`, in addition
+to the existing result comparisons. It does not infer success merely from
+finding 772 filenames. A historical numerical comparison remains in every
+report, and `historical_result_contract_passed` remains false for the new pool.
+
+The original DD tolerance remains 0.0005 and its uncertainty tolerance remains
+0.001. The common template, sigma_eff and GOF references are unchanged. The GOF
+tolerance allows three recorded Monte Carlo standard errors. These are
+computational checks; pending physics systematic studies remain pending.
+
+### Why the rebuilt DD number differs from the trusted slide
+
+The collected historical `mixed_template_summary.csv` reports 772 files found,
+771 loaded and one failed, followed by reuse of the resulting cache. The fresh
+CERN execution read all 772 without failures. It saw 49,285 additional selected
+J/psi candidates and 1,499 additional selected D* candidates before reservoir
+sampling. The mixed regional fraction changed from 0.04398855316 to
+0.04392118458, while the data regional fraction and post-fit purity agree.
+Inserting these fractions into the same DD normalization explains the complete
+0.0522 percentage-point shift. The physics formula, seeds and event limits did
+not change.
+
+`reference/mixing_reproduction_contracts.json` preserves both numerical input
+references and their evidence. The historical result is still the reference for
+the 30 September presentation. The complete-pool record is a computational
+regression baseline established from one observed rebuild, not an automatic
+update of the slide or publication result. The identity of the failed historical
+file and the historical cache hash have not been recovered, so exact
+regeneration of that cache from raw mixing inputs is not established.
+
+### Check a completed run without repeating the notebooks
+
+For the already completed CERN run:
+
+```bash
+python3 scripts/validate_reproduction.py \
+  runs/nominal_reproduction_002/nominal \
+  --mixing-reference rebuilt-772
+```
+
+This uses only the Python standard library. It writes
+`reproduction_validation_rebuilt_772.json` and prints both the selected-reference
+status and the historical comparison. The original `reproduction_validation.json`
+and `run_status.json` remain records of the earlier comparison failure. A pass
+here establishes agreement of saved outputs with the explicitly selected
+reference; it does not constitute a second independent rebuild.
+
+For an explicit historical comparison, use `--mixing-reference historical`.
+That writes `reproduction_validation_historical.json` and is expected to fail
+for the complete-pool run. Passing the complete-pool check never declares the
+historical slide reproduced exactly.
 
 ## The unresolved final-slide combination
 

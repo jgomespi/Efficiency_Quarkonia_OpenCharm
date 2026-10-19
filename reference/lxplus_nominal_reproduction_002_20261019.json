@@ -1,0 +1,38 @@
+{
+  "evidence": "Joao's terminal output from lxplus9114, supplied on 19 October 2026",
+  "source_commit": "7f9499201c9e6948abf5e58bc7a664baed6adde6",
+  "run_dir": "runs/nominal_reproduction_002",
+  "stage": "nominal",
+  "systematics_dir": "runs/full_reproduction_001/efficiency_systematics",
+  "nominal_notebook_completed": true,
+  "original_validator_passed": false,
+  "original_checks_passed": 18,
+  "original_checks_total": 19,
+  "original_failed_check": "data_driven_fDPS",
+  "observed_validation_fields": {
+    "fDPS": 0.3791580802688369,
+    "stat_down": 0.020657056704700503,
+    "stat_up": 0.020563779345329592,
+    "total_down": 0.06414711783448505,
+    "total_up": 0.07223266494309252,
+    "data_driven_fDPS": 0.340944320170747,
+    "data_driven_total_sigma": 0.05512970222560172,
+    "gof_toy_pvalue": 0.5835416458354165,
+    "high_statistics_mode": true,
+    "actual_fit_grid": "4x4",
+    "number_fit_parameters": 1,
+    "gof_toys_requested": 10000,
+    "gof_toys_successful": 10000,
+    "sigma_eff": {
+      "sigma_eff_mb": 7.6730287876208285,
+      "sigma_eff_total_error_down_mb": 2.5102526830337997,
+      "sigma_eff_total_error_up_mb": 2.689818299657333
+    },
+    "reportability_status": "PROFILE_PASSES_BUT_REMAINING_DIFFERENTIAL_SYSTEMATICS_PENDING"
+  },
+  "mixing_reference": "reference/mixing_reproduction_contracts.json:rebuilt-772",
+  "diagnosis": "All 772 mixing files loaded with zero failures; historical cache used 771. Data and MC regional fractions and post-fit purity agree. The change in mixed-event regional fraction reproduces the entire DD central-value shift algebraically.",
+  "data_driven_shift_percentage_points": 0.05221570792708352,
+  "full_slide_27_reproduced": false,
+  "independent_second_rebuild_verified": false
+}

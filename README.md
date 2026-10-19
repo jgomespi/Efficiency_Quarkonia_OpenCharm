@@ -24,11 +24,13 @@ The source collection was made on `lxplus9114.cern.ch` on **19 October 2026**.
 The original lxplus and EOS directories were preserved. See
 [source selection](docs/SOURCE_SELECTION.md) and [slide cross-validation](docs/SLIDE_CROSS_VALIDATION.md).
 
-**Validation status:** the first packaged lxplus run passed environment and input
-checks and completed the efficiency-systematics stage. The nominal stage stopped
-at a figure-layout check; its eight-panel layout has been adjusted and checked
-locally, with a fresh nominal lxplus execution pending. Changes to the collected
-notebooks are limited to paths and that plot's geometry. The collected outputs
-contain the separate template and data-driven determinations; the final-slide
-combination procedure remains absent from the collected code. The guide records
-this remaining gap and the command to reuse the completed systematics stage.
+**Validation status:** the efficiency-systematics and nominal notebooks have now
+completed on lxplus. The template fit, its errors, GOF and template-based
+sigma_eff reproduce the historical reference. The complete mixing rebuild reads
+772 files, while the historical cache was built with 771 successfully read files;
+this changes DD f_DPS from 0.3404222 to 0.3409443. Both input references and the
+algebraic explanation are preserved. The launcher validates complete rebuilds
+against the explicit `rebuilt-772` reference and still reports the historical
+difference. This baseline comes from one observed CERN rebuild; rechecking its
+saved outputs is not a second independent execution. See the guide for the
+quick validation command. The final-slide combination provenance remains pending.

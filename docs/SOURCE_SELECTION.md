@@ -76,5 +76,34 @@ official mplhep 0.3.15 CMS style. A deliberately compressed figure still fails,
 confirming that the collision audit remains active. The original lxplus failure
 was observed with Matplotlib 3.5.0; the exact renderer is unavailable locally, and
 the original-size figure does not fail with the local renderer. This local check
-does not establish successful physics reproduction. The nominal lxplus rerun and
-the final-slide combination provenance remain pending.
+does not establish successful physics reproduction. The subsequent nominal CERN
+execution did complete with the corrected geometry, as recorded below.
+
+## Completed nominal rebuild and historical mixing difference
+
+`runs/nominal_reproduction_002` completed the nominal notebook on lxplus using the
+regenerated systematics bundle from the first attempt. Its original numerical
+comparison passed 18 of 19 tests. Template f_DPS, its statistical/total errors,
+GOF and template-based sigma_eff match the collected reference; only DD f_DPS
+exceeded its unchanged 0.0005 tolerance.
+
+The collected reference reused a cache built with 771 successful input reads and
+one failure. The new run read all 772 files. The change in mixed regional fraction
+reproduces the entire shift from 0.3404221631 to 0.3409443202 through the unchanged
+DD normalization. Data/MC regional fractions, selected region and post-fit purity
+agree. The historical missing file has not been identified.
+
+The validator now accepts an explicit `historical` or `rebuilt-772` reference.
+The historical reference and comparison are retained; the complete-pool baseline
+comes from the supplied fresh CERN output and is recorded separately in
+`reference/mixing_reproduction_contracts.json`. All original result tolerances
+are retained. Complete-pool validation additionally checks zero failed reads,
+all recorded mixing counts, regional fractions and DD normalization identities.
+The launcher explicitly chooses `rebuilt-772` because it rebuilds the full pool.
+The validator CLI defaults to `historical` unless a reference is requested.
+
+Targeted local tests used the two recorded numerical snapshots and rejected a
+changed template result, incomplete mixing reads, a missing summary quantity and
+inconsistent regional normalization. CLI tests checked exit codes and preservation
+of the first report. These are validator tests, not an independent CERN rebuild.
+The trusted final-slide combination provenance remains unresolved.

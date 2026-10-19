@@ -70,6 +70,8 @@ def main():
     parser.add_argument('--paths', type=Path, default=ROOT / 'config/paths.lxplus.json')
     parser.add_argument('--run-dir', type=Path)
     parser.add_argument('--systematics-dir', type=Path)
+    parser.add_argument('--mixing-reference', choices=['historical', 'rebuilt-772'], default='rebuilt-772',
+                        help='Validation reference. This launcher rebuilds all 772 files; historical uses the older 771-file cache result.')
     parser.add_argument('--hash-mixing', action='store_true', help='Also SHA256 every mixing Coffea input; this reads the complete pool.')
     args = parser.parse_args()
     paths = json.loads(args.paths.read_text())
@@ -87,6 +89,7 @@ def main():
     print('RUN DIRECTORY:', run, flush=True)
     state = {'stage': args.stage, 'run_dir': str(run), 'paths': paths,
              'started_utc': datetime.datetime.now(datetime.timezone.utc).isoformat(),
+             'mixing_reference': args.mixing_reference,
              'completed': False, 'full_slide_27_reproduced': False}
     try:
         env_file = run / 'environment.json'
@@ -124,9 +127,16 @@ def main():
             child['JPSIDSTAR_EFF_RESPONSE_SYST_DIR'] = str(systematic)
             child['JPSIDSTAR_OUTPUT_ROOT'] = str(nominal)
             run_notebook('nominal.ipynb', nominal, child)
-            result = subprocess.run([sys.executable, str(ROOT / 'scripts/validate_reproduction.py'), str(nominal)])
+            state['nominal_notebook_completed'] = True
+            result = subprocess.run([sys.executable, str(ROOT / 'scripts/validate_reproduction.py'), str(nominal),
+                                     '--mixing-reference', args.mixing_reference])
+            report_name = 'reproduction_validation_' + args.mixing_reference.replace('-', '_') + '.json'
+            validation = json.loads((nominal / report_name).read_text())
+            state['validation_report'] = str(nominal / report_name)
+            state['numerical_validation_passed'] = validation['current_code_reference_passed']
+            state['historical_result_contract_passed'] = validation['historical_result_contract_passed']
             if result.returncode:
-                raise RuntimeError('The fresh run differs from the collected current-code numerical reference.')
+                raise RuntimeError('The fresh run differs from the selected ' + args.mixing_reference + ' reference; inspect ' + report_name)
         state['completed'] = True
         return 0
     except Exception as exc:

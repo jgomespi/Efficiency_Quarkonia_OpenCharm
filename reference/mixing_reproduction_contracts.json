@@ -1,0 +1,76 @@
+{
+  "schema_version": 1,
+  "purpose": "Keep the historical 771-file cache and complete 772-file rebuild as separate computational references. The trusted presentation and missing combination are not replaced.",
+  "historical": {
+    "evidence": "19 October 2026 read-only CERN evidence: nominal notebook cell 45, mixed_template_summary.csv, data_driven_region_scan.csv and FINAL_NOMINAL_HIST_analysis_status.json",
+    "description": "Historical result using a cache built after one of 772 Coffea files failed to load",
+    "missing_file_identity": null,
+    "historical_cache_sha256": null,
+    "data_driven_fDPS": 0.34042216309147616,
+    "data_driven_total_sigma": 0.05506344505011867,
+    "summary": {
+      "Mixing files found": 772,
+      "Mixing files loaded": 771,
+      "Mixing files failed": 1,
+      "Raw J/psi candidates seen": 74848263,
+      "Raw D* candidates seen": 1072978,
+      "Selected J/psi candidates seen": 52133208,
+      "Selected D* candidates seen": 986107,
+      "J/psi reservoir retained": 750000,
+      "D* reservoir retained": 250000,
+      "D* duplicates removed": 3003,
+      "Mixed pairs": 2000000,
+      "Mixing veto mode": "file_key",
+      "Rejected same-source draws": 2994,
+      "Mixing cache version": 1
+    },
+    "region": {
+      "dy_min": 2.1999999999999997,
+      "dphi_min": 0.0,
+      "dphi_max": 1.0,
+      "purity": 0.821132616458169,
+      "data_region_fraction": 0.018236613816890276,
+      "mixed_region_fraction": 0.04398855316237564,
+      "sps_region_fraction": 0.005414094870363498,
+      "dps_mc_region_fraction": 0.04069759335138631,
+      "f_before_closure": 0.34042216309147616,
+      "f_corrected": 0.3679499740809665
+    }
+  },
+  "rebuilt-772": {
+    "evidence": "Joao's lxplus9114 terminal output on 19 October 2026: runs/nominal_reproduction_002/nominal/reproduction_validation.json, mixed_template_summary.csv and selected data_driven_region_scan.csv row",
+    "source_commit": "7f9499201c9e6948abf5e58bc7a664baed6adde6",
+    "description": "First observed complete rebuild of all 772 mixing files; a computational regression baseline, not a replacement publication result",
+    "independent_second_rebuild_verified_at_recording": false,
+    "data_driven_fDPS": 0.340944320170747,
+    "data_driven_total_sigma": 0.05512970222560172,
+    "summary": {
+      "Mixing files found": 772,
+      "Mixing files loaded": 772,
+      "Mixing files failed": 0,
+      "Raw J/psi candidates seen": 74909269,
+      "Raw D* candidates seen": 1074528,
+      "Selected J/psi candidates seen": 52182493,
+      "Selected D* candidates seen": 987606,
+      "J/psi reservoir retained": 750000,
+      "D* reservoir retained": 250000,
+      "D* duplicates removed": 3082,
+      "Mixed pairs": 2000000,
+      "Mixing veto mode": "file_key",
+      "Rejected same-source draws": 3064,
+      "Mixing cache version": 1
+    },
+    "region": {
+      "dy_min": 2.1999999999999997,
+      "dphi_min": 0.0,
+      "dphi_max": 1.0,
+      "purity": 0.8211326164580819,
+      "data_region_fraction": 0.018236613816890297,
+      "mixed_region_fraction": 0.043921184583158114,
+      "sps_region_fraction": 0.005414094870363498,
+      "dps_mc_region_fraction": 0.04069759335138631,
+      "f_before_closure": 0.340944320170747,
+      "f_corrected": 0.3679499740809279
+    }
+  }
+}
