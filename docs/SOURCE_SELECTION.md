@@ -36,8 +36,12 @@ overwritten with the older local documentation.
 
 The current EOS project and template-fit directory do not resolve as valid Git
 repositories. Their Git metadata was not repaired or reinitialized. The release
-branch uses the valid GitHub efficiency repository as its history base and makes
-the complete J/psi+D* layout explicit.
+branch used the valid GitHub efficiency repository as its history base and made
+the complete J/psi+D* layout explicit. The dedicated `JPsiDstar_Run2` repository
+continues that history from commit `5f61efae2901e8eceaf8695472ca93a30e5112e4`.
+The migration retains the source bytes of all analysis and producer code,
+configuration, input fingerprints, covariance files and numerical references.
+See [REPOSITORY.md](REPOSITORY.md) for the repository boundary and attribution.
 
 The initial copied notebooks changed only configuration/path assignments. After
 the first lxplus attempt exposed a layout collision, nominal cell 21 also changed

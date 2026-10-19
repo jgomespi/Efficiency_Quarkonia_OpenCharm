@@ -1,12 +1,29 @@
-# J/psi + D* Run-2 analysis reproduction
+# J/psi + D* production in Run 2
 
-This branch collects the code needed to rerun the current J/psi + D* template fit,
+This repository collects the code needed to rerun the current J/psi + D* template fit,
 its efficiency-response systematics, and the mixed-event cross-check from the
 inputs already stored in Joao's CERN area. It also preserves the active upstream
 efficiency and mixing-production code. Other physics projects are outside its scope.
 
 Start with **[the reproduction guide](docs/REPRODUCE.md)**. It explains the
 physics goal, each program, the input contracts, and the exact execution order.
+
+## Run on lxplus
+
+```bash
+cd /afs/cern.ch/user/j/jgomespi/private/workspace/JPsiDstar
+git clone https://github.com/jgomespi/JPsiDstar_Run2.git
+cd JPsiDstar_Run2
+bash scripts/run_lxplus.sh nominal --run-dir runs/nominal_001
+```
+
+The command checks the recorded environment and inputs, executes the nominal
+analysis using the included efficiency covariance bundle, rebuilds the mixing
+cache, and validates the saved results. Each attempt needs a new run directory.
+The code and reference files are included here; event files remain on CERN
+storage. See the guide for runtime requirements and input access.
+
+## Entry points
 
 | Task | Entry point |
 |---|---|
@@ -18,7 +35,9 @@ physics goal, each program, the input contracts, and the exact execution order.
 
 Every analysis execution creates a new directory under `runs/`. Event ROOT files,
 Coffea pools, environment archives, proxies, compiled Python files, old notebooks,
-and exploratory scans are excluded from this branch.
+and exploratory scans are excluded from this repository.
+
+## Source and validation
 
 The source collection was made on `lxplus9114.cern.ch` on **19 October 2026**.
 The original lxplus and EOS directories were preserved. See
@@ -35,3 +54,17 @@ difference. The selected-reference check has also passed on lxplus. This baselin
 comes from one observed CERN rebuild; rechecking its saved outputs is not a second
 independent execution. See the guide for the
 quick validation command. The final-slide combination provenance remains pending.
+
+## Repository origin
+
+This project continues the curated J/psi + D* work previously held on
+`joao/jpsidstar-reproducible-release` in
+[jgomespi/Efficiency_Quarkonia_OpenCharm](https://github.com/jgomespi/Efficiency_Quarkonia_OpenCharm).
+Its Git history is preserved. The efficiency implementation derives from
+[Mapse/Efficiency_Quarkonia_OpenCharm](https://github.com/Mapse/Efficiency_Quarkonia_OpenCharm).
+
+The analysis uses the efficiency snapshot included here, so the documented
+workflow requires one repository checkout. See
+[repository scope and versioning](docs/REPOSITORY.md) for source attribution
+and how to record the version used for a result. The remaining upstream
+dependencies are described in [UPSTREAM.md](docs/UPSTREAM.md).

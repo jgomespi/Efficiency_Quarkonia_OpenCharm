@@ -10,7 +10,9 @@ the absolute rapidity difference `abs(delta_y)` to estimate the DPS fraction
 `f_DPS = sigma_DPS / (sigma_SPS + sigma_DPS)`.
 
 The primary determination fits simulated SPS and DPS shapes to signal-weighted
-data. A second determination constructs a DPS shape by mixing candidates from
+data. Signal weights (sWeights) come from the earlier signal-extraction fit
+and subtract the background statistically. A second determination constructs a
+DPS shape by mixing candidates from
 different source files and normalizes it in a DPS-enriched region. Its purity
 correction is obtained from the template fit, so these two determinations share
 information. Their compatibility does not establish statistical independence.
@@ -22,20 +24,23 @@ NanoAOD is a separate upstream task; its exact current production provenance has
 not been established by this collection. The active mixing and efficiency
 producers are retained and documented in [UPSTREAM.md](UPSTREAM.md).
 
-## First checkout on Joao's lxplus account
+## Checkout on lxplus
 
-The intended working directory is the new AFS directory already created for this
-task. It is separate from the existing efficiency checkout and EOS project.
+Create a separate checkout alongside the existing analysis directories:
 
 ```bash
-cd /afs/cern.ch/user/j/jgomespi/private/workspace/JPsiDstar/reproducible_release
-git clone --branch joao/jpsidstar-reproducible-release \
-  https://github.com/jgomespi/Efficiency_Quarkonia_OpenCharm.git .
+cd /afs/cern.ch/user/j/jgomespi/private/workspace/JPsiDstar
+git clone https://github.com/jgomespi/JPsiDstar_Run2.git
+cd JPsiDstar_Run2
+git rev-parse HEAD
+git status --short
 ```
 
-Run the clone command only in the empty directory. Existing checkouts can inspect
-the remote branch before switching; the original production checkout does not
-need to change for this reproduction.
+Record the commit used for each run. A clean checkout identifies the source
+version without local changes. This repository includes the selected efficiency
+implementation; a second code checkout is not needed. The original CERN
+production areas remain the input locations. See [REPOSITORY.md](REPOSITORY.md)
+for the history and versioning policy.
 
 ## Programs and their responsibilities
 
@@ -86,20 +91,24 @@ bash scripts/run_lxplus.sh environment
 The launcher clears `PYTHONHOME`, `PYTHONPATH`, and `LD_LIBRARY_PATH` for its child
 process and disables user site packages. It does not alter shell startup files,
 install packages, or upgrade an existing environment. Exact environment capture
-and a fresh successful lxplus run are still needed before this branch can claim
-a validated installation from a newly created environment.
+and a fresh successful lxplus run are still needed before this repository can claim
+a validated installation from a newly created environment. The supported runtime
+is the observed CERN environment, whose availability is checked on each run.
 
 ## Inputs that must be available
 
 `config/paths.lxplus.json` records the observed CERN paths. Change a copy of this
 file if the same frozen inputs are staged elsewhere; pass it with `--paths`.
+The input paths are under
+`/eos/home-j/jgomespi/SWAN_projects/Associated_Production_JPsi_Dstar/`.
+Using another account requires access to these inputs or identical copies.
 
 | Input | Count | Location in the recorded layout |
 |---|---:|---|
 | Full Run-2 selected data and matched signal sWeights | 2 ROOT files | `Template_fit/Data/Charmonium_all_...` |
 | Selected DPS ccbar and bbbar samples in three pT slices each, plus SPS ccbar and bbbar | 8 ROOT files | `Template_fit/Data/` |
 | Four component efficiency maps for each of 2017 and 2018 | 8 ROOT files | `Template_fit/Data/efficiency_final_2017_2018/` |
-| Efficiency-response covariance checkpoint | 1 JSON and 3 NPY files | `reference/efficiency_systematics/` in this branch |
+| Efficiency-response covariance checkpoint | 1 JSON and 3 NPY files | `reference/efficiency_systematics/` in this repository |
 | Candidate reservoirs for mixing | 772 Coffea files | Recorded `condor_data_preparation/output_noHLT_preassoc_v1/Run2/...` pool |
 
 The 18 ROOT inputs are fingerprinted in `reference/input_manifest.json`. Their
@@ -143,6 +152,8 @@ For a long unattended run, use an explicit new directory and a log:
 
 ```bash
 mkdir -p logs
+git rev-parse HEAD > logs/reproduction_001.commit.txt
+git status --short > logs/reproduction_001.source_status.txt
 nohup bash scripts/run_lxplus.sh nominal --run-dir runs/reproduction_001 \
   > logs/reproduction_001.log 2>&1 &
 ```
@@ -157,7 +168,7 @@ was traced to the complete mixing pool versus the historical incomplete cache.
 ## Regenerate the covariance inputs as well
 
 ```bash
-bash scripts/run_lxplus.sh all --run-dir runs/full_reproduction_001
+bash scripts/run_lxplus.sh all --run-dir runs/full_001
 ```
 
 The systematics notebook runs first in its own output directory. Its resulting
@@ -170,23 +181,21 @@ dependency of the final uncertainties. No other archived notebook is required.
 
 ### Reuse a completed systematics stage after a failed nominal run
 
-For the recorded first attempt, `runs/full_reproduction_001/efficiency_systematics`
-is complete. After updating the release checkout, rerun the nominal notebook in
-a new output directory and explicitly use that regenerated bundle:
+If a systematics stage has completed, its output bundle can be reused in a new
+nominal run. For example, after the `full_001` run above:
 
 ```bash
-git pull --ff-only origin joao/jpsidstar-reproducible-release
 mkdir -p logs
 nohup bash scripts/run_lxplus.sh nominal \
-  --run-dir runs/nominal_reproduction_new \
-  --systematics-dir runs/full_reproduction_001/efficiency_systematics \
-  > logs/nominal_reproduction_new.log 2>&1 &
+  --run-dir runs/nominal_002 \
+  --systematics-dir runs/full_001/efficiency_systematics \
+  > logs/nominal_002.log 2>&1 &
 ```
 
 Use this command after the earlier process has exited. It preserves the first
 attempt and recomputes the nominal notebook from its first cell, while reusing
 the completed covariance stage. Inspect the outer log and
-`runs/nominal_reproduction_new/nominal/execution.log` for progress. A finished run
+`runs/nominal_002/nominal/execution.log` for progress. A finished run
 also has `run_status.json` and, with the current launcher defaults,
 `nominal/reproduction_validation_rebuilt_772.json`.
 
@@ -225,6 +234,27 @@ also has `run_status.json` and, with the current launcher defaults,
 The historical binning key and figure filenames say **6x6**, while the explicit
 nominal edges define **4x4 = 16 bins**. This naming convention is retained to
 preserve source compatibility and is recorded explicitly in the result JSON.
+
+## Output files
+
+Paths below are relative to the run directory printed by the launcher.
+
+| File or directory | What it records |
+|---|---|
+| `environment.json` | Interpreter, imports and installed distributions |
+| `input_preflight.json` | ROOT fingerprints and mixing input inventory |
+| `run_status.json` | Stage, paths, completion and numerical-validation status |
+| `efficiency_systematics/` | Regenerated covariance bundle when requested |
+| `nominal/execution.log` and `nominal/executed.ipynb` | Cell progress and saved notebook outputs |
+| `nominal/FINAL_NOMINAL_HIST_analysis_status.json` | Fit settings, central values, errors and analysis gates |
+| `nominal/final_fdps_results_FINAL.csv` | Separate template and DD results |
+| `nominal/mixed_template_summary.csv` | Actual input-read counts and mixing reservoir statistics |
+| `nominal/data_driven_region_scan.csv` | Regional fractions, fitted purity and DD normalization |
+| `nominal/reproduction_validation_rebuilt_772.json` | Selected-reference checks and the historical comparison |
+
+Use the run status and validation report together. Reaching the last notebook
+cell establishes execution; the validation report establishes numerical
+agreement within the stated reference and tolerances.
 
 ## How to recognize a successful numerical reproduction
 
@@ -274,20 +304,24 @@ regeneration of that cache from raw mixing inputs is not established.
 
 ### Check a completed run without repeating the notebooks
 
-For the already completed CERN run:
+For a completed run in this checkout:
 
 ```bash
 python3 scripts/validate_reproduction.py \
-  runs/nominal_reproduction_002/nominal \
+  runs/reproduction_001/nominal \
   --mixing-reference rebuilt-772
 ```
 
 This uses only the Python standard library. It writes
 `reproduction_validation_rebuilt_772.json` and prints both the selected-reference
 status and the historical comparison. The original `reproduction_validation.json`
-and `run_status.json` remain records of the earlier comparison failure. A pass
+and `run_status.json`, if present, are preserved. A pass
 here establishes agreement of saved outputs with the explicitly selected
 reference; it does not constitute a second independent rebuild.
+
+The earlier `full_reproduction_001` and `nominal_reproduction_002` run records
+refer to the prior `reproducible_release` checkout on lxplus. Those generated
+directories are not included in a fresh clone.
 
 This saved-output check was executed on lxplus on 19 October 2026 with validator
 commit `e45d882`: selected-reference validation **PASS**, historical numerical
@@ -313,7 +347,7 @@ The combination algorithm, its inputs and the template/DD covariance have not
 been located in the collected code. A later note also quotes the combined
 number without supplying this calculation.
 
-Consequently, this branch does not hard-code the slide result or invent an
+Consequently, this repository does not hard-code the slide result or invent an
 independence assumption. `full_slide_27_reproduced` remains false. Recovering the
 original combination procedure is necessary before claiming that the complete
 final slide can be regenerated.

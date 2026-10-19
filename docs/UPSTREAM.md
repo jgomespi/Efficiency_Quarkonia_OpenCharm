@@ -2,7 +2,7 @@
 
 The normal final-result reproduction uses the frozen CERN inputs. These
 producers explain how those input classes are made. Their complete execution
-has not been repeated as part of packaging this branch.
+has not been repeated as part of packaging this repository.
 
 ## Efficiency production and final maps
 
