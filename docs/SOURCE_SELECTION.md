@@ -1,0 +1,63 @@
+# Source selection and synchronization record
+
+The authoritative source for this selection is the package collected on lxplus
+on 19 October 2026, not the earlier Template_fit ZIP. The collection had no
+warnings and found the current nominal notebook, 18 required ROOT inputs, the
+covariance bundle, and the 772-file mixing pool.
+
+| Source or group | Decision | Reason |
+|---|---|---|
+| Current `FINAL_NOMINAL_RUN2_JPsiDstar_TemplateFit_DataDriven.ipynb` | Keep as `analysis/nominal.ipynb` | Contains the current fit, DD extraction, uncertainty propagation and figure production |
+| Archived `JPsiDstar_Systematics_EfficiencyYearBinning_20260904.ipynb` | Keep as `analysis/efficiency_systematics.ipynb` | Produces the matrices required by the nominal notebook |
+| `execute_notebook_stdlib.py` | Keep unchanged | Existing notebook execution mechanism |
+| `build_final_run2_notebook.py` | Exclude | Builds a previous HIST/KDE notebook from two historical baselines; the current nominal notebook runs directly |
+| Legacy `template_fit.py` | Exclude | Neither selected notebook imports or executes it |
+| KDE notebooks, alternative 1-/3-parameter configurations, old fit directories | Exclude | Superseded alternatives are not runtime dependencies of the selected nominal analysis |
+| Old sparse-bin scans, hypothesis scans and exploratory efficiency diagnoses | Exclude | The selected grids are already fixed; current production validates the final map contract |
+| Current efficiency driver, processor, utilities, configs and 2017/2018 map refinalizer | Keep under `efficiency/` | Required producers for the frozen response maps |
+| Eight frozen Caltech 2018 filelists | Keep | Configured runtime inputs absent from the remote efficiency branch |
+| Active no-HLT mixing producer, wrapper and submit descriptor | Keep under `preparation/` | Authoritative current upstream producer; the older EOS copy differs |
+| 772 active job filelists | Keep as one compressed catalog | Restores the exact active split without carrying old pilot/retry queues |
+| Two documented bad raw input files | Exclude from restored job lists | Their successful retry lists omit these two files |
+| Old preparation pilots, missing-job retries and old full-sPlot notebooks | Exclude | Not part of the chosen production route |
+| Binary event files, caches, environment packs, certificates/proxies, compiled Python | Exclude | External runtime/data inputs or generated products, not release source |
+
+The archived producer is retained because it is used; the archive label alone
+was not used to decide whether a file could be removed from the release.
+
+## Git reconciliation
+
+The lxplus efficiency checkout is on `joao/run2-efficiency-inputs` at
+`c62037d77954c32f727bd23a7668ad2304187e04`. The remote branch head inspected for
+this task is `36c097718acbc78483311444a6fd39d4c2219f09`, three documentation commits
+ahead. The compared production Python/config blobs are identical. The remote
+documentation commits are retained under `docs/history/` instead of being
+overwritten with the older local documentation.
+
+The current EOS project and template-fit directory do not resolve as valid Git
+repositories. Their Git metadata was not repaired or reinitialized. The release
+branch uses the valid GitHub efficiency repository as its history base and makes
+the complete J/psi+D* layout explicit.
+
+Only configuration/path assignments changed in the copied notebooks. AST
+comparison confirmed that all other code in the changed cells is unchanged;
+all other cell sources are byte-for-byte unchanged. Physics, likelihood,
+random seeds, replica counts, fitted parameters and the selected bin edges were
+not rewritten. Exact original source fingerprints and changed cell indices are
+recorded in `reference/source_provenance.json`.
+
+## Validation performed while packaging
+
+- Parsed Python entry points and notebook code; checked shell syntax.
+- Compared the selected notebook implementations with collected cell sources.
+- Checked the real 16-by-16 covariance symmetry, positive semidefiniteness and
+  equality of the stored total to the year-plus-binning sum.
+- Reconstructed the DD uncertainty quadrature from its recorded components.
+- Compared available attached ROOT files to the current lxplus fingerprints;
+  the 18 required frozen inputs match.
+- Checked that the compact active mixing catalog contains 772 jobs and removes
+  the two documented bad input URLs.
+
+A full packaged lxplus execution and an actual environment capture are pending.
+The final-slide combination provenance is also unresolved. These are explicit
+remaining tasks, not completed checks.

@@ -1,0 +1,29 @@
+universe = vanilla
+
+executable = run_prepare_mixing.sh
+arguments  = $(tag) $(filelist_base) $(outsubdir)
+
+should_transfer_files = YES
+when_to_transfer_output = ON_EXIT
+
+transfer_input_files = prepare_mixing.py, $(filelist)
+
+output = logs/noHLT_$(tag).$(Cluster).$(Process).out
+error  = logs/noHLT_$(tag).$(Cluster).$(Process).err
+log    = logs/noHLT_Run2.$(Cluster).log
+
+request_cpus   = 2
+request_memory = 20000MB
+request_disk   = 20000MB
+
++JobFlavour = "tomorrow"
+
+use_x509userproxy = true
+x509userproxy = /afs/cern.ch/user/j/jgomespi/private/x509up_u107037
+
+max_retries = 2
+retry_until = (ExitCode == 0)
+
+batch_name = JPsiDstar_Run2_noHLT_preassoc
+
+queue tag,filelist,filelist_base,outsubdir from queue_Run2_100files.txt

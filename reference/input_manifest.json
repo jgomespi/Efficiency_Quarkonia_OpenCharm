@@ -1,0 +1,113 @@
+{
+  "collection_utc": "2026-10-19T10:51:12.917120+00:00",
+  "files": [
+    {
+      "kind": "data",
+      "relative_path": "Data/Charmonium_all_vtx0p05_sigma_eff_jpsi_pt_bin1_25_100.root",
+      "sha256": "5376bca9c1c3d54c9529de52fddd667c2f0cd820e63c1fa135296618551b404a",
+      "size_bytes": 2432655
+    },
+    {
+      "kind": "data",
+      "relative_path": "Data/Charmonium_all_vtx0p05_sigma_eff_jpsi_pt_bin1_25_100_3Dfit_splot_signal_weights.root",
+      "sha256": "ce04752a191ab0a60ece5f02a108d15a23fc5dd46a9245c5e477f39a429f52f6",
+      "size_bytes": 217966
+    },
+    {
+      "kind": "data",
+      "relative_path": "Data/dps_bbbar_30to50_usual.root",
+      "sha256": "b3f29351cb5a110a347aac0e8fc5d7f3c65b974c8535c3e908497caa54a95308",
+      "size_bytes": 1434948
+    },
+    {
+      "kind": "data",
+      "relative_path": "Data/dps_bbbar_50to100_usual.root",
+      "sha256": "725cb8cda08e3496c097c0fd8664d532cd70c84731ff52dac1b184d76b72ad20",
+      "size_bytes": 760531
+    },
+    {
+      "kind": "data",
+      "relative_path": "Data/dps_bbbar_9to30_usual.root",
+      "sha256": "8c76171a7456b595bb832a0a174fe2c6d2ea64bdf31addc5ca5a99184fd8024f",
+      "size_bytes": 59075
+    },
+    {
+      "kind": "data",
+      "relative_path": "Data/dps_ccbar_30to50_usual.root",
+      "sha256": "18e569f46901078ef716d1d17bad5d140300005a560aafb4cebc39a316b2b0ae",
+      "size_bytes": 4381174
+    },
+    {
+      "kind": "data",
+      "relative_path": "Data/dps_ccbar_50to100_usual.root",
+      "sha256": "93c555ff7c80631f59f37a6b981f46129f887bf356b650bcdc439d5ab67bbf94",
+      "size_bytes": 2084323
+    },
+    {
+      "kind": "data",
+      "relative_path": "Data/dps_ccbar_9to30_usual.root",
+      "sha256": "1d90e84ffa081cded976d6974b2ccec9514cd11d448d185aa021c9feaa8a90ad",
+      "size_bytes": 99585
+    },
+    {
+      "kind": "data",
+      "relative_path": "Data/sps_3fs_bbbar_25to100_usual.root",
+      "sha256": "a3766a31903bea6f5edfd191426f949cc31711cfa8c430b5cf1e69f807a4b83d",
+      "size_bytes": 519851
+    },
+    {
+      "kind": "data",
+      "relative_path": "Data/sps_3fs_ccbar_25to100_usual.root",
+      "sha256": "fcaf19d0f98e5aee82d2629ca3312422733c6df5e9d0cb8efce72940740f83fb",
+      "size_bytes": 4720619
+    },
+    {
+      "kind": "efficiency",
+      "relative_path": "efficiencies_DPS-bbbar_differential_final_jpsi_2017.root",
+      "sha256": "be3f844ad4b634b653e842e0b695db5deca4ad4ec578fb62dd52d1557aca5779",
+      "size_bytes": 69925
+    },
+    {
+      "kind": "efficiency",
+      "relative_path": "efficiencies_DPS-bbbar_differential_final_jpsi_2018.root",
+      "sha256": "8a2fa28525cdb318771d6734179179a82f12a9e6d5c109c7e03931138a0b7655",
+      "size_bytes": 69903
+    },
+    {
+      "kind": "efficiency",
+      "relative_path": "efficiencies_DPS-ccbar_differential_final_jpsi_2017.root",
+      "sha256": "ef7812dd59ac06315b9c650ebea7fcb02ac78d034703b09ccb990660796a63ed",
+      "size_bytes": 69929
+    },
+    {
+      "kind": "efficiency",
+      "relative_path": "efficiencies_DPS-ccbar_differential_final_jpsi_2018.root",
+      "sha256": "ea22e323ff94199636f61d90eb2edcb96b16923c2bfac431561efe25e7f8795a",
+      "size_bytes": 69500
+    },
+    {
+      "kind": "efficiency",
+      "relative_path": "efficiencies_SPS-bbbar_differential_final_jpsi_2017.root",
+      "sha256": "36ede82e5d0e8b6c3735990e1e32605484d5a7478a3ea7a28c0dbdb1c29c9232",
+      "size_bytes": 69877
+    },
+    {
+      "kind": "efficiency",
+      "relative_path": "efficiencies_SPS-bbbar_differential_final_jpsi_2018.root",
+      "sha256": "785d1aaccfb3045b3a17bf62a30cdab187cd4dd61bc23c79de60f20fb2940b41",
+      "size_bytes": 68900
+    },
+    {
+      "kind": "efficiency",
+      "relative_path": "efficiencies_SPS-ccbar_differential_final_jpsi_2017.root",
+      "sha256": "fa7bc8b51952b4f3c84a7a278e83372cb9054946edcbbb1f445c9a2cabeea6a7",
+      "size_bytes": 69489
+    },
+    {
+      "kind": "efficiency",
+      "relative_path": "efficiencies_SPS-ccbar_differential_final_jpsi_2018.root",
+      "sha256": "8e1d8adf28dcacf04a69a9f99040ec6fad25fb6f100c14f8589da3af93a9b366",
+      "size_bytes": 69901
+    }
+  ]
+}

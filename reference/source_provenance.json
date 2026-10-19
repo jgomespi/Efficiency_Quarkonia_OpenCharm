@@ -1,0 +1,220 @@
+{
+  "collection_utc": "2026-10-19T10:51:12.917120+00:00",
+  "collection_host": "lxplus9114.cern.ch",
+  "efficiency_local_head": "c62037d77954c32f727bd23a7668ad2304187e04",
+  "efficiency_remote_base": "36c097718acbc78483311444a6fd39d4c2219f09",
+  "source_files": [
+    {
+      "release_path": "analysis/nominal.ipynb",
+      "source_path": "/eos/home-j/jgomespi/SWAN_projects/Associated_Production_JPsi_Dstar/Template_fit/FINAL_NOMINAL_RUN2_JPsiDstar_TemplateFit_DataDriven.ipynb",
+      "original_file_sha256": "6da0af8c929d527df24ab7b61766a9e679faa925b56ddc715088a632a7c3e2ed",
+      "original_cell_source_sha256": "32cb144ba9480552e933f5d85de173bcf290ac2e8f0fd5ac13daf9b6f9bdd976",
+      "changed_cells_are_path_configuration_only": [
+        3,
+        6
+      ]
+    },
+    {
+      "release_path": "analysis/efficiency_systematics.ipynb",
+      "source_path": "/eos/home-j/jgomespi/SWAN_projects/Associated_Production_JPsi_Dstar/Template_fit/archive/notebooks_before_nominal_20260908/JPsiDstar_Systematics_EfficiencyYearBinning_20260904.ipynb",
+      "original_file_sha256": "c49ff7614ff2711feda2170d07adcdfa46cd5b5f5fd23e83b249ceed0b33e9e9",
+      "original_cell_source_sha256": "755208e18dadf3b26063b0defe8f209eb791dcef6a0269946e697f64230d87fe",
+      "changed_cells_are_path_configuration_only": [
+        2,
+        3,
+        5
+      ]
+    },
+    {
+      "release_path": "efficiency/nanoAODplus_efficiency.py",
+      "source_path": "/afs/cern.ch/user/j/jgomespi/private/workspace/JPsiDstar/Efficiency_Quarkonia_OpenCharm/nanoAODplus_efficiency.py",
+      "sha256": "c7aa14fa9d026bd500684c3f5414cdb9a8541f8af7c3c1d91c1c950d10568d7f",
+      "modified": false
+    },
+    {
+      "release_path": "efficiency/nanoAODplus_processor/EfficiencyProcessor.py",
+      "source_path": "/afs/cern.ch/user/j/jgomespi/private/workspace/JPsiDstar/Efficiency_Quarkonia_OpenCharm/nanoAODplus_processor/EfficiencyProcessor.py",
+      "sha256": "5731abb265a872b457e40afbdf24ba44fe6c65c9e62aff4dabb269c562aa8092",
+      "modified": false
+    },
+    {
+      "release_path": "efficiency/tools/collections.py",
+      "source_path": "/afs/cern.ch/user/j/jgomespi/private/workspace/JPsiDstar/Efficiency_Quarkonia_OpenCharm/tools/collections.py",
+      "sha256": "b1e135f474a166cc4b43a8505bd37b6c467d295f1fbbcc9bbae5499ee3a26ea3",
+      "modified": false
+    },
+    {
+      "release_path": "efficiency/tools/utils.py",
+      "source_path": "/afs/cern.ch/user/j/jgomespi/private/workspace/JPsiDstar/Efficiency_Quarkonia_OpenCharm/tools/utils.py",
+      "sha256": "31d7ca8131fd72c28a10b7333f93cc55e7c48fb69cddf7058decd61214ab22c2",
+      "modified": false
+    },
+    {
+      "release_path": "efficiency/tools/figure.py",
+      "source_path": "/afs/cern.ch/user/j/jgomespi/private/workspace/JPsiDstar/Efficiency_Quarkonia_OpenCharm/tools/figure.py",
+      "sha256": "40fa7c02e994dca9c122d699f883190b0fbf1c599be00f791b82470780ba5cb7",
+      "modified": false
+    },
+    {
+      "release_path": "efficiency/tools/refinalize_2017_2018_common.py",
+      "source_path": "/afs/cern.ch/user/j/jgomespi/private/workspace/JPsiDstar/Efficiency_Quarkonia_OpenCharm/tools/refinalize_2017_2018_common.py",
+      "sha256": "fb52b6b0625a730bcf3fbde25619a5b670bd0698c1b1913d5ea6e5d736fa0eb0",
+      "modified": false
+    },
+    {
+      "release_path": "efficiency/tools/audit_final_2017_2018.py",
+      "source_path": "/afs/cern.ch/user/j/jgomespi/private/workspace/JPsiDstar/Efficiency_Quarkonia_OpenCharm/tools/audit_final_2017_2018.py",
+      "sha256": "85ec281c9c4cd4d39d9a618ee1e1314d7b084e671ddec0af1afecc364f0d3cc5",
+      "modified": false
+    },
+    {
+      "release_path": "efficiency/config/efficiency.yaml",
+      "source_path": "/afs/cern.ch/user/j/jgomespi/private/workspace/JPsiDstar/Efficiency_Quarkonia_OpenCharm/config/efficiency.yaml",
+      "sha256": "b81801400bcb964c8885b172df49d86fb30b0a014be4ad78f0f742ead5fe2643",
+      "modified": false
+    },
+    {
+      "release_path": "efficiency/config/samples.yaml",
+      "source_path": "/afs/cern.ch/user/j/jgomespi/private/workspace/JPsiDstar/Efficiency_Quarkonia_OpenCharm/config/samples.yaml",
+      "sha256": "9760601c364a99d6c60c6f8da865adfce5d2b6c72f12bfb287e85947307c39e8",
+      "modified": false
+    },
+    {
+      "release_path": "efficiency/config/lumi.yaml",
+      "source_path": "/afs/cern.ch/user/j/jgomespi/private/workspace/JPsiDstar/Efficiency_Quarkonia_OpenCharm/config/lumi.yaml",
+      "sha256": "27458fbf8093c03d57ee2af521a9db751a2cf7f3e7667f6a2713e02031579d80",
+      "modified": false
+    },
+    {
+      "release_path": "efficiency/config/skim_trigger.yaml",
+      "source_path": "/afs/cern.ch/user/j/jgomespi/private/workspace/JPsiDstar/Efficiency_Quarkonia_OpenCharm/config/skim_trigger.yaml",
+      "sha256": "5f0947f19d4a627735194d2fbca48d628f35fda29ca1c70e573c2ee1ba4bf1af",
+      "modified": false
+    },
+    {
+      "release_path": "efficiency/scripts/run_efficiencies.sh",
+      "source_path": "/afs/cern.ch/user/j/jgomespi/private/workspace/JPsiDstar/Efficiency_Quarkonia_OpenCharm/scripts/run_efficiencies.sh",
+      "sha256": "0b07ba1d46b1274736935255d3953297a774cd4a4ee20e9a95a2a39f8de1bd8a",
+      "modified": false
+    },
+    {
+      "release_path": "efficiency/scripts/prepare_caltech_2018_inputs.py",
+      "source_path": "/afs/cern.ch/user/j/jgomespi/private/workspace/JPsiDstar/Efficiency_Quarkonia_OpenCharm/scripts/prepare_caltech_2018_inputs.py",
+      "sha256": "67fef8843eb4caf9461c6dbbc9167181dc3639ab3128b2568e2909a63157a72d",
+      "modified": false
+    },
+    {
+      "release_path": "efficiency/inputs/caltech/DPS-bbbar_2018_30to50.txt",
+      "source_path": "/afs/cern.ch/user/j/jgomespi/private/workspace/JPsiDstar/Efficiency_Quarkonia_OpenCharm/inputs/caltech/DPS-bbbar_2018_30to50.txt",
+      "sha256": "938acede5890f7c56754d9fde1a074d8ec5d3f2a624affb6236243ec62f06407",
+      "modified": false
+    },
+    {
+      "release_path": "efficiency/inputs/caltech/DPS-bbbar_2018_50to100.txt",
+      "source_path": "/afs/cern.ch/user/j/jgomespi/private/workspace/JPsiDstar/Efficiency_Quarkonia_OpenCharm/inputs/caltech/DPS-bbbar_2018_50to100.txt",
+      "sha256": "d40fb44194083b32d07b179b23dfb13e6aa00877dcaa95576662f6c60e73a98b",
+      "modified": false
+    },
+    {
+      "release_path": "efficiency/inputs/caltech/DPS-bbbar_2018_9to30.txt",
+      "source_path": "/afs/cern.ch/user/j/jgomespi/private/workspace/JPsiDstar/Efficiency_Quarkonia_OpenCharm/inputs/caltech/DPS-bbbar_2018_9to30.txt",
+      "sha256": "a82e9f3d9b4786a0016d7b686bd8e7d166c3d7c7f80f6a2f9c731c9dc0a5f2c3",
+      "modified": false
+    },
+    {
+      "release_path": "efficiency/inputs/caltech/DPS-ccbar_2018_30to50.txt",
+      "source_path": "/afs/cern.ch/user/j/jgomespi/private/workspace/JPsiDstar/Efficiency_Quarkonia_OpenCharm/inputs/caltech/DPS-ccbar_2018_30to50.txt",
+      "sha256": "d651a8f1e13c97f390e85788d6341c3e0d162d7fd8c9e3d8c4302f628a2cf3d9",
+      "modified": false
+    },
+    {
+      "release_path": "efficiency/inputs/caltech/DPS-ccbar_2018_50to100.txt",
+      "source_path": "/afs/cern.ch/user/j/jgomespi/private/workspace/JPsiDstar/Efficiency_Quarkonia_OpenCharm/inputs/caltech/DPS-ccbar_2018_50to100.txt",
+      "sha256": "0dd66f83eadd01d2c4aafb20eef73035fd22f0eb404e2831fe79dcd0a677aacd",
+      "modified": false
+    },
+    {
+      "release_path": "efficiency/inputs/caltech/DPS-ccbar_2018_9to30.txt",
+      "source_path": "/afs/cern.ch/user/j/jgomespi/private/workspace/JPsiDstar/Efficiency_Quarkonia_OpenCharm/inputs/caltech/DPS-ccbar_2018_9to30.txt",
+      "sha256": "8f7d3f5f1542d0bde5c02323c7cb5cd7096dfe80d8f9bffbfac5fc62f9850158",
+      "modified": false
+    },
+    {
+      "release_path": "efficiency/inputs/caltech/SPS-bbbar_2018.txt",
+      "source_path": "/afs/cern.ch/user/j/jgomespi/private/workspace/JPsiDstar/Efficiency_Quarkonia_OpenCharm/inputs/caltech/SPS-bbbar_2018.txt",
+      "sha256": "92774088dba575de4fae9dc680bbd3b5e45cbf304805ff6adeb620a557bd77ba",
+      "modified": false
+    },
+    {
+      "release_path": "efficiency/inputs/caltech/SPS-ccbar_2018.txt",
+      "source_path": "/afs/cern.ch/user/j/jgomespi/private/workspace/JPsiDstar/Efficiency_Quarkonia_OpenCharm/inputs/caltech/SPS-ccbar_2018.txt",
+      "sha256": "436f54a83c8e7310e9f1e6e8d46f0eab7ac26345994d35b39f93f9ad8092db01",
+      "modified": false
+    },
+    {
+      "release_path": "efficiency/data/corrections/Efficiency_muon_generalTracks_Run2017_UL_trackerMuon.json",
+      "source_path": "/afs/cern.ch/user/j/jgomespi/private/workspace/JPsiDstar/Efficiency_Quarkonia_OpenCharm/data/corrections/Efficiency_muon_generalTracks_Run2017_UL_trackerMuon.json",
+      "sha256": "a10e6fb21ecf59ff363cf9761aaef316748ab4973ab4c38c07fcba3374cfd3df",
+      "modified": false
+    },
+    {
+      "release_path": "efficiency/data/corrections/Efficiency_muon_generalTracks_Run2018_UL_trackerMuon.json",
+      "source_path": "/afs/cern.ch/user/j/jgomespi/private/workspace/JPsiDstar/Efficiency_Quarkonia_OpenCharm/data/corrections/Efficiency_muon_generalTracks_Run2018_UL_trackerMuon.json",
+      "sha256": "1a636f1823b58e698c1171b53eb98be6b8000128c4753855fe0cc0354c971955",
+      "modified": false
+    },
+    {
+      "release_path": "efficiency/data/corrections/Efficiency_muon_trackerMuon_Run2017_UL_ID.json",
+      "source_path": "/afs/cern.ch/user/j/jgomespi/private/workspace/JPsiDstar/Efficiency_Quarkonia_OpenCharm/data/corrections/Efficiency_muon_trackerMuon_Run2017_UL_ID.json",
+      "sha256": "426489556fddd36014eed5fd0109c58e14b2c5166a157eefd99dd0f9e604de83",
+      "modified": false
+    },
+    {
+      "release_path": "efficiency/data/corrections/Efficiency_muon_trackerMuon_Run2018_UL_ID.json",
+      "source_path": "/afs/cern.ch/user/j/jgomespi/private/workspace/JPsiDstar/Efficiency_Quarkonia_OpenCharm/data/corrections/Efficiency_muon_trackerMuon_Run2018_UL_ID.json",
+      "sha256": "b98d231a62bbff407bfcd47db8dc86ad6f1d216ce65a0b7d3be62a83a3e63a4a",
+      "modified": false
+    },
+    {
+      "release_path": "preparation/prepare_mixing.py",
+      "source_path": "/afs/cern.ch/user/j/jgomespi/private/workspace/Associated_Production_JPsi_Dstar/condor/JPsiDstar_data_preparation/prepare_mixing.py",
+      "sha256": "9e45666552760794117b4fe6642d26424b8a5975a432c07db5ca62b0efc58be8",
+      "modified": false
+    },
+    {
+      "release_path": "preparation/run_prepare_mixing.sh",
+      "source_path": "/afs/cern.ch/user/j/jgomespi/private/workspace/Associated_Production_JPsi_Dstar/condor/JPsiDstar_data_preparation/run_prepare_mixing.sh",
+      "sha256": "e56eccc59634f1cc34c0f8dc6b65abb9b4ceb87599a63a945c434e5d06526b3a",
+      "modified": false
+    },
+    {
+      "release_path": "preparation/submit_noHLT_preassoc_Run2.sub",
+      "source_path": "/afs/cern.ch/user/j/jgomespi/private/workspace/Associated_Production_JPsi_Dstar/condor/JPsiDstar_data_preparation/submit_noHLT_preassoc_Run2.sub",
+      "sha256": "f882853a84969051542fdaff39995f0098f125591b4702b44443fe81e65aaf5d",
+      "modified": false
+    }
+  ],
+  "notebook_path_changes": {
+    "analysis/nominal.ipynb": [
+      3,
+      6
+    ],
+    "analysis/efficiency_systematics.ipynb": [
+      2,
+      3,
+      5
+    ]
+  },
+  "validation": {
+    "full_lxplus_rerun": "PENDING",
+    "complete_slide_27_reproduction": false,
+    "path_only_ast_comparison": "PASS",
+    "systematic_covariance_checks": "PASS",
+    "dd_uncertainty_quadrature": "PASS",
+    "18_attached_root_hashes": "PASS",
+    "changed_input_rejection": "PASS",
+    "mixing_catalog_materialization_and_bad_file_exclusion": "PASS",
+    "frozen_mixing_destination_rejection": "PASS",
+    "python_and_shell_syntax": "PASS"
+  }
+}

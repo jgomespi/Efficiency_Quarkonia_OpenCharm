@@ -1,0 +1,3 @@
+method,fDPS,down,up,role,n_free_parameters,binning,actual_n_dphi_bins,actual_n_dy_bins,dphi_max,AN143_integrated_systematics,efficiency_response_systematics,year_response_fdps_envelope,efficiency_binning_fdps_envelope,model_inadequacy_rel,region_dy_min,region_dphi_min,region_dphi_max,paired_difference_z
+2D profile likelihood,0.37915808026897657,0.06414711783114913,0.07223266494058209,nominal,1,6x6,4.0,4.0,3.141592653589793,True,True,0.004199954650129234,0.004342505216002601,0.25,,,,
+Mixed-event data-driven × post-fit purity,0.34042216309147616,0.05506344505011867,0.05506344505011867,cross-check,1,6x6,,,3.141592653589793,True,False,,,,2.1999999999999997,0.0,1.0,-0.7543918153092818
